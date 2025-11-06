@@ -58,7 +58,22 @@ export default function Home() {
     return () => subscription.unsubscribe()
   }, [])
 
-  // 🌐 Login via Google
+  useEffect(() => {
+    const snapScript = document.createElement("script");
+    snapScript.src = "https://app.sandbox.midtrans.com/snap/snap.js";
+    snapScript.setAttribute(
+      "data-client-key",
+      process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
+    );
+    snapScript.async = true;
+
+    document.body.appendChild(snapScript);
+
+    return () => {
+      document.body.removeChild(snapScript);
+    };
+  }, []);
+
   const loginWithGoogle = async () => {
     try {
       const { error } = await supabase.auth.signInWithOAuth({
@@ -144,6 +159,28 @@ export default function Home() {
             Halo, {user.user_metadata?.full_name || user.email} 👋
           </h1>
           <p className="text-gray-600">Email: {user.email}</p>
+          <Button
+            onClick={async () => {
+              const res = await fetch("/api/create-transaction", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  gross_amount: 50000,
+                  name: user.user_metadata?.full_name || "Pengguna",
+                  email: user.email,
+                }),
+              });
+              const data = await res.json();
+              if (!window.snap) {
+                alert("Midtrans belum siap, coba lagi sebentar ya!");
+                return;
+              }
+              window.snap.pay(data.token);
+            }}
+          >
+            Bayar Sekarang
+          </Button>
+
           <Button variant="destructive" onClick={logout} className="flex items-center gap-2">
             <LogOut className="h-4 w-4" />
             Logout
