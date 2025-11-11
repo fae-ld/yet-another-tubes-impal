@@ -74,91 +74,89 @@ export default function ServicesPage() {
           </Dialog.Description>
 
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-  {/* Estimasi Berat */}
-  <div className="flex flex-col">
-    <label htmlFor="weight" className="text-blue-700 font-medium mb-1">
-      Estimasi Berat (kg) ⚖️
-    </label>
-    <input
-      id="weight"
-      type="number"
-      placeholder="Contoh: 5"
-      value={formData.weight}
-      onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
-      className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
-      required
-      min={0}
-    />
-  </div>
+            {/* Estimasi Berat */}
+            <div className="flex flex-col">
+              <label htmlFor="weight" className="text-blue-700 font-medium mb-1">
+                Estimasi Berat (kg) ⚖️
+              </label>
+              <input
+                id="weight"
+                type="number"
+                placeholder="Contoh: 5"
+                value={formData.weight}
+                onChange={(e) => setFormData({ ...formData, weight: e.target.value })}
+                className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
+                required
+                min={0}
+              />
+            </div>
 
-  {/* Jumlah Pakaian */}
-  <div className="flex flex-col">
-    <label htmlFor="quantity" className="text-blue-700 font-medium mb-1">
-      Jumlah Pakaian (helai) 👕
-    </label>
-    <input
-      id="quantity"
-      type="number"
-      placeholder="Contoh: 10"
-      value={formData.quantity}
-      onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
-      className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
-      required
-      min={0}
-    />
-  </div>
+            {/* Jumlah Pakaian */}
+            <div className="flex flex-col">
+              <label htmlFor="quantity" className="text-blue-700 font-medium mb-1">
+                Jumlah Pakaian (helai) 👕
+              </label>
+              <input
+                id="quantity"
+                type="number"
+                placeholder="Contoh: 10"
+                value={formData.quantity}
+                onChange={(e) => setFormData({ ...formData, quantity: e.target.value })}
+                className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
+                required
+                min={0}
+              />
+            </div>
 
-  {/* Alamat Lengkap */}
-  <div className="flex flex-col">
-    <label htmlFor="address" className="text-blue-700 font-medium mb-1">
-      Alamat Lengkap 🏠
-    </label>
-    <textarea
-      id="address"
-      placeholder="Contoh: Jl. Sudirman No. 123, Jakarta"
-      value={formData.address}
-      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
-      className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm resize-none"
-      rows={3}
-      required
-    />
-  </div>
+            {/* Alamat Lengkap */}
+            <div className="flex flex-col">
+              <label htmlFor="address" className="text-blue-700 font-medium mb-1">
+                Alamat Lengkap 🏠
+              </label>
+              <textarea
+                id="address"
+                placeholder="Contoh: Jl. Sudirman No. 123, Jakarta"
+                value={formData.address}
+                onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm resize-none"
+                rows={3}
+                required
+              />
+            </div>
 
-  {/* Estimasi Selesai */}
-  <div className="flex flex-col">
-    <label htmlFor="estimatedDate" className="text-blue-700 font-medium mb-1">
-      Estimasi Selesai 📅
-    </label>
-    <input
-      id="estimatedDate"
-      type="date"
-      value={formData.estimatedDate}
-      onChange={(e) => setFormData({ ...formData, estimatedDate: e.target.value })}
-      className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
-      required
-    />
-  </div>
+            {/* Estimasi Selesai */}
+            <div className="flex flex-col">
+              <label htmlFor="estimatedDate" className="text-blue-700 font-medium mb-1">
+                Estimasi Selesai 📅
+              </label>
+              <input
+                id="estimatedDate"
+                type="date"
+                value={formData.estimatedDate}
+                onChange={(e) => setFormData({ ...formData, estimatedDate: e.target.value })}
+                className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
+                required
+              />
+            </div>
 
-  {/* Buttons */}
-  <div className="flex justify-end gap-2 mt-2">
-    <Dialog.Close asChild>
-      <Button
-        type="button"
-        className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg px-5 py-2"
-      >
-        Cancel
-      </Button>
-    </Dialog.Close>
-    <Button
-      type="submit"
-      className="bg-blue-500 text-white hover:bg-blue-600 rounded-lg px-5 py-2 hover:animate-bounce"
-    >
-      Submit
-    </Button>
-  </div>
-</form>
-
-
+            {/* Buttons */}
+            <div className="flex justify-end gap-2 mt-2">
+              <Dialog.Close asChild>
+                <Button
+                  type="button"
+                  className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg px-5 py-2"
+                >
+                  Cancel
+                </Button>
+              </Dialog.Close>
+              <Button
+                type="submit"
+                className="bg-blue-500 text-white hover:bg-blue-600 rounded-lg px-5 py-2"
+              >
+                Submit
+              </Button>
+            </div>
+          </form>
           {/* Close X */}
           <Dialog.Close asChild>
             <button className="absolute top-4 right-4 text-blue-500 hover:text-blue-700 font-bold text-xl">
