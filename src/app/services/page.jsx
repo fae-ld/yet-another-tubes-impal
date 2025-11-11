@@ -12,6 +12,10 @@ const servicesData = [
   { id: 3, title: 'Cuci & Setrika', image: '/images/ic-ironwash.png', features: ['Cuci 1kg', 'Setrika', 'Waktu 24 jam'], price: 'Rp35.000' },
 ]
 
+// TODO:
+// - Date estimation handling
+// - Responsive ngestuck waktu scroll paling bawah (item dan form paling bawah kepotong)
+
 export default function ServicesPage() {
   const [selectedService, setSelectedService] = useState(null)
   const [formData, setFormData] = useState({ weight: '', quantity: '', address: '', estimatedDate: '' })
