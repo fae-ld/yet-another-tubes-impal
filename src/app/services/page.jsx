@@ -35,8 +35,8 @@ export default function ServicesPage() {
       // Show loading during redirect (1.5s)
       setTimeout(() => {
         close()
-        router.push('/#')
-      }, 5000)
+        router.push('/history#order-1')
+      }, 3000)
     }, 2000) // 2 detik loading sebelum redirect
   }
 
@@ -143,7 +143,7 @@ export default function ServicesPage() {
                           <Dialog.Close asChild>
                             <Button type="button" className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg px-5 py-2">Cancel</Button>
                           </Dialog.Close>
-                          <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-lg px-5 py-2">Submit</Button>
+                          <Button type="submit" className="bg-blue-500 text-white hover:bg-blue-600 rounded-lg px-5 py-2">Buat pesanan!</Button>
                         </div>
                       </form>
                     </>
