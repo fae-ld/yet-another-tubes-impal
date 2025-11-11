@@ -23,8 +23,8 @@ export default function Page() {
   return user ? (
     <DashboardLayout>
       <div>
-        <h1 className="text-3xl font-bold text-blue-600">Home</h1>
-        <p className="mt-4 text-gray-700">Welcome, {user.email}</p>
+        <h1 className="text-3xl font-bold text-blue-600">Heyyy, selamat datang di LaundryGo~</h1>
+        <p className="mt-4 text-gray-700">dude ... what the flip</p>
       </div>
     </DashboardLayout>
   ) : (

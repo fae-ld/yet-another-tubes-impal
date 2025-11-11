@@ -120,3 +120,22 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* modal? */
+/* Modal slide up bounce */
+/* TODO: Rename? idk kurang representative sih */
+@keyframes slideUpBounce { 
+  0% {
+      opacity: 0;
+      transform: scale(0.95);
+    }
+  
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-slideUpBounce {
+  animation: slideUpBounce 0.4s cubic-bezier(0.25, 1.25, 0.5, 1) forwards;
+}
