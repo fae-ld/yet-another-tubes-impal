@@ -5,28 +5,31 @@ import { supabase } from '@/lib/supabase'
 
 const UserContext = createContext()
 
-export function UserProvider({ children }) {
+export const UserProvider = ({ children }) => {
   const [user, setUser] = useState(null)
+  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      setUser(user)
+    const getUser = async () => {
+      const { data: { user: currentUser } } = await supabase.auth.getUser()
+      setUser(currentUser)
+      setLoading(false)
     }
-    fetchUser()
 
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user || null)
+    getUser()
+
+    const { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null)
     })
 
-    return () => authListener.subscription.unsubscribe()
+    return () => subscription.unsubscribe()
   }, [])
 
-  return <UserContext.Provider value={{ user, setUser }}>{children}</UserContext.Provider>
+  return (
+    <UserContext.Provider value={{ user, setUser, loading }}>
+      {children}
+    </UserContext.Provider>
+  )
 }
 
-export function useUser() {
-  const context = useContext(UserContext)
-  if (!context) throw new Error('useUser must be used within a UserProvider')
-  return context
-}
+export const useUser = () => useContext(UserContext)
