@@ -2,76 +2,52 @@
 
 import * as Dialog from '@radix-ui/react-dialog'
 import { Button } from '@/components/ui/button'
-import { Clock, Loader2, CheckCircle } from 'lucide-react'
-import { useEffect } from 'react'
+import Image from 'next/image'
+import { useState } from 'react'
 import { useUser } from '@/context/UserContext'
-import Script from 'next/script'
-
-// TODO:
-// QR Regenerate tiap close atau tetep keep sampe expired?
 
 export default function OrderModal({ order, open, onClose }) {
+  const { user } = useUser()
+  const [qrUrl, setQrUrl] = useState(null)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
+
   if (!order) return null
 
-  const { user, loading } = useUser()
-
-  if (!user) {
-      return (
-        <DashboardLayout>
-          <div className="flex items-center justify-center min-h-screen">
-            <p className="text-gray-500">User tidak ditemukan</p>
-          </div>
-        </DashboardLayout>
-      )
-    }
-  
-
-  const getStatusStyles = (status) => {
-    switch (status) {
-      case 'Pending': return 'bg-yellow-100 text-yellow-800'
-      case 'In Progress': return 'bg-blue-100 text-blue-800'
-      case 'Done': return 'bg-green-100 text-green-800'
-      default: return 'bg-gray-100 text-gray-800'
-    }
-  }
-
-  const deadline = new Date(new Date(order.date).getTime() + 24 * 60 * 60 * 1000)
-
-  // Load Snap.js once
-  useEffect(() => {
-    if (!window.snap) {
-      const script = document.createElement('script')
-      script.src = 'https://app.sandbox.midtrans.com/snap/snap.js'
-      script.setAttribute('data-client-key', process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY)
-      script.async = true
-      document.body.appendChild(script)
-    }
-  }, [])
-
-  const handleSnapPay = async () => {
+  const handlePayQRIS = async () => {
+    setLoading(true)
+    setError(null)
     try {
-      const res = await fetch("/api/create-transaction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const res = await fetch('/api/create-transaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           gross_amount: 25000,
-          name: user.user_metadata?.full_name, // sesuaikan user
+          name: user.user_metadata?.full_name,
           email: user.email,
         }),
       })
 
       const data = await res.json()
 
-      if (data.token) {
-        window.snap.pay(data.token, {
-          onSuccess: (result) => console.log("success", result),
-          onPending: (result) => console.log("pending", result),
-          onError: (result) => console.log("error", result),
-          onClose: () => console.log("customer closed popup"),
-        })
+      if (data.actions) {
+        // cari URL QR dari response
+        const qrAction = data.actions.find(
+          (a) => a.name === 'generate-qr-code' || a.name === 'generate-qr-code-v2'
+        )
+        if (qrAction) {
+          setQrUrl(qrAction.url)
+        } else {
+          setError('Gagal menemukan QR Code dari Midtrans.')
+        }
+      } else {
+        setError('Respons Midtrans tidak valid.')
       }
     } catch (err) {
-      console.error("Snap pay error:", err)
+      console.error('QRIS error:', err)
+      setError('Gagal membuat transaksi.')
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -80,36 +56,47 @@ export default function OrderModal({ order, open, onClose }) {
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/30 backdrop-blur-sm" />
         <Dialog.Content className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 max-w-lg w-full bg-white p-6 rounded-xl shadow-2xl border border-blue-100 flex flex-col gap-4">
-          
-          <Dialog.Title className="text-2xl font-bold text-blue-700">Order #{order.id}</Dialog.Title>
+          <Dialog.Title className="text-2xl font-bold text-blue-700">
+            Order #{order.id}
+          </Dialog.Title>
+
           <p><strong>Service:</strong> {order.service}</p>
           <p><strong>Date:</strong> {order.date}</p>
-          <p>
-            <strong>Status:</strong>{' '}
-            <span className={`px-2 py-1 rounded ${getStatusStyles(order.status)}`}>
-              {order.status}
-            </span>
-          </p>
+          <p><strong>Status:</strong> {order.status}</p>
 
           {order.status === 'Pending' && (
-            <div className="mt-4 p-4 border rounded-lg border-yellow-200 bg-yellow-50 flex flex-col items-center gap-4">
-              <h3 className="font-semibold text-yellow-800 text-lg">Bayar Sekarang 🧾</h3>
+            <div className="mt-4 p-4 border rounded-lg border-blue-200 bg-blue-50 flex flex-col items-center gap-4">
+              <h3 className="font-semibold text-blue-800 text-lg">Bayar dengan QRIS 📱</h3>
 
-              <Button
-                onClick={handleSnapPay}
-                className="bg-yellow-600 text-white px-4 py-2 rounded hover:bg-yellow-700"
-              >
-                Bayar Sekarang
-              </Button>
+              {!qrUrl ? (
+                <Button
+                  onClick={handlePayQRIS}
+                  disabled={loading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                >
+                  {loading ? 'Membuat QR...' : 'Buat QRIS'}
+                </Button>
+              ) : (
+                <div className="flex flex-col items-center gap-3">
+                  <Image
+                    src={qrUrl}
+                    alt="QRIS Payment"
+                    width={220}
+                    height={220}
+                    className="rounded-lg border"
+                  />
+                  <p className="text-sm text-gray-500">Scan pakai aplikasi e-wallet kamu</p>
+                </div>
+              )}
 
-              <p className="text-yellow-700 text-sm">Total bayar: <span className="font-semibold">Rp25.000</span></p>
+              {error && <p className="text-red-600 text-sm">{error}</p>}
             </div>
           )}
 
           <div className="flex justify-end gap-2 mt-4">
             <Dialog.Close asChild>
               <Button className="bg-gray-100 text-gray-700 hover:bg-gray-200 rounded-lg px-4 py-2">
-                Close
+                Tutup
               </Button>
             </Dialog.Close>
           </div>
