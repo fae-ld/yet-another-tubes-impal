@@ -35,7 +35,7 @@ export default function ServicesPage() {
       // Show loading during redirect (1.5s)
       setTimeout(() => {
         close()
-        router.push('/history#order-1')
+        router.push('/orders/1')
       }, 3000)
     }, 2000) // 2 detik loading sebelum redirect
   }
@@ -50,7 +50,7 @@ export default function ServicesPage() {
               <Dialog.Trigger asChild>
                 <div
                   onClick={() => setSelectedService(service)}
-                  className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-2xl p-5 flex flex-col items-center text-center hover:scale-98 hover:shadow-lg transition-transform duration-200 cursor-pointer border border-blue-200"
+                  className=" rounded-2xl p-5 flex flex-col items-center text-center hover:scale-98 hover:shadow-lg transition-transform duration-200 cursor-pointer border border-blue-200"
                 >
                   <img src={service.image} alt={service.title} className="w-24 h-24 object-contain mb-4" />
                   <h2 className="text-xl font-bold text-blue-700 mb-2">{service.title}</h2>

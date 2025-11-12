@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
-import { Home, Clock, Bell, Settings, LogOut, Menu, ShoppingCart  } from 'lucide-react'
+import { Home, Clock, Bell, Settings, LogOut, Menu, ShoppingCart, ReceiptText  } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useUser } from '@/context/UserContext'
 
@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }) {
   const menuItems = [
     { name: 'Home', icon: <Home size={24} />, href: '/' },
     { name: 'Services', icon: <ShoppingCart size={24} />, href: '/services' },
-    { name: 'History', icon: <Clock size={24} />, href: '/history' },
+    { name: 'Orders', icon: <ReceiptText size={24} />, href: '/orders' },
     { name: 'Notifications', icon: <Bell size={24} />, href: '/notifications' },
     { name: 'Settings', icon: <Settings size={24} />, href: '/settings' },
     { name: 'Logout', icon: <LogOut size={24} />, href: '#', isLogout: true },
