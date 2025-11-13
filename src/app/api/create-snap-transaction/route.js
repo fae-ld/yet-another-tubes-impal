@@ -4,6 +4,7 @@ import midtransClient from "midtrans-client";
 export async function POST(req) {
   try {
     const body = await req.json();
+    const origin = req.headers.get("origin") || process.env.NEXT_PUBLIC_SITE_URL;
 
     // Buat instance Snap Midtrans
     const snap = new midtransClient.Snap({
@@ -34,6 +35,11 @@ export async function POST(req) {
       ],
       credit_card: {
         secure: true,
+      },
+      callbacks: { // TODO: Really?  handle di window snap pay juga bisa sih
+        finish: `${origin}/orders/success`,
+        error: `${origin}/orders/failed`,
+        pending: `${origin}/orders/pending`,
       },
     };
 

@@ -1,3 +1,4 @@
+// src\app\orders\[id]\page.jsx
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -26,6 +27,25 @@ export default function OrderDetailsPage() {
 
   const { user, loading } = useUser();
 
+  useEffect(() => {
+    const data = ordersData.find((o) => o.id === parseInt(id));
+    setOrder(data);
+  }, [id]);
+
+  // load Snap.js
+  useEffect(() => {
+    if (!window.snap) {
+      const script = document.createElement("script");
+      script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
+      script.setAttribute(
+        "data-client-key",
+        process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY,
+      );
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+  
   // TODO: Skeleton
   if (loading) {
     return (
@@ -51,25 +71,6 @@ export default function OrderDetailsPage() {
     );
   }
 
-  useEffect(() => {
-    const data = ordersData.find((o) => o.id === parseInt(id));
-    setOrder(data);
-  }, [id]);
-
-  // load Snap.js
-  useEffect(() => {
-    if (!window.snap) {
-      const script = document.createElement("script");
-      script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
-      script.setAttribute(
-        "data-client-key",
-        process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY,
-      );
-      script.async = true;
-      document.body.appendChild(script);
-    }
-  }, []);
-
   const handleSnapPay = async () => {
     try {
       const res = await fetch("/api/create-snap-transaction", {
@@ -86,7 +87,10 @@ export default function OrderDetailsPage() {
 
       if (data.token) {
         window.snap.pay(data.token, {
-          onSuccess: (result) => console.log("✅ success:", result),
+          onSuccess: (result) => {
+            console.log("✅ success:", result)
+            window.location.reload();
+          },
           onPending: (result) => console.log("🕒 pending:", result),
           onError: (result) => console.log("❌ error:", result),
           onClose: () => console.log("popup closed by user"),
