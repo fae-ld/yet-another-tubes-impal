@@ -22,12 +22,14 @@ export default function OrdersPage() {
       setLoading(true);
       const { data, error } = await supabase
         .from("pesanan")
-        .select("id_pesanan, jenis_layanan, tgl_pesanan, status_pembayaran, status_pesanan")
+        .select(
+          "id_pesanan, jenis_layanan, tgl_pesanan, status_pembayaran, status_pesanan",
+        )
         .eq("id_pelanggan", user.id)
         .order("tgl_pesanan", { ascending: false });
 
       if (error) {
-        console.error("Gagal mengambil data pesanan:", error); 
+        console.error("Gagal mengambil data pesanan:", error);
       } else {
         // Format data biar match ke struktur UI lama
         const formatted = data.map((item) => ({

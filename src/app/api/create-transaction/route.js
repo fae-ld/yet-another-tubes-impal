@@ -23,7 +23,7 @@ export async function POST(req) {
     },
     gopay: {
       enable_callback: true,
-      callback_url: `${origin}`
+      callback_url: `${origin}`,
     },
   };
 

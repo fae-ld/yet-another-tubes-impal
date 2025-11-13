@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { FcGoogle } from "react-icons/fc";
 
 export default function LoginForm() {
-  // TODO: Popup register 
+  // TODO: Popup register
   const [isLoginForm, setIsLoginForm] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
