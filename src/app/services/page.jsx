@@ -6,8 +6,11 @@ import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
+import { useUser } from "@/contexts/UserContext";
 
 export default function ServicesPage() {
+  const { user, loading: userLoading } = useUser();
+
   const [services, setServices] = useState([]);
   const [selectedService, setSelectedService] = useState(null);
   const [formData, setFormData] = useState({
@@ -61,26 +64,81 @@ export default function ServicesPage() {
     fetchServices();
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Kalau context user masih loading, tahan dulu
+    if (userLoading) {
+      alert("Tunggu sebentar... sedang memeriksa status login 🕐");
+      return;
+    }
+
+    // Kalau user belum login
+    if (!user) {
+      alert("Kamu harus login dulu sebelum membuat pesanan!");
+      return;
+    }
+
+    // Validasiii tanggal
+    const today = new Date();
+    today.setHours(0, 0, 0, 0); // hapus jam
+    const selected = new Date(formData.estimatedDate);
+    selected.setHours(0, 0, 0, 0);
+
+    const maxDate = new Date();
+    maxDate.setDate(maxDate.getDate() + 7); // TODO: maksimum 7 hari ke depan?
+
+    if (selected < today) {
+      alert("Tanggal estimasi tidak boleh sebelum hari ini 😅");
+      return;
+    }
+
+    if (selected > maxDate) {
+      alert("Tanggal estimasi maksimal 7 hari dari sekarang ⏰");
+      return;
+    }
+
     setLoading(true);
 
-    // Simulasi delay request
-    setTimeout(() => {
-      setLoading(false);
-      setLoadingRedirect(true);
+    // Ambil harga dari service
+    const berat = parseFloat(formData.weight);
+    const hargaPerKg = parseFloat(selectedService.price.replace(/[^\d]/g, ""));
+    const totalBiaya = berat * hargaPerKg;
 
-      // Delay sebelum redirect
-      setTimeout(() => {
-        setSelectedService(null);
-        setFormData({
-          weight: "",
-          quantity: "",
-          address: "",
-          estimatedDate: "",
-        });
-        router.push("/orders/1");
-      }, 3000);
+    const newOrder = {
+      id_pelanggan: user.id, // user.id dari Supabase auth
+      jenis_layanan: selectedService.title,
+      estimasi_berat: berat,
+      total_biaya_final: totalBiaya,
+      jadwal_selesai: formData.estimatedDate
+        ? new Date(formData.estimatedDate).toISOString()
+        : null,
+    };
+
+    const { data, error } = await supabase
+      .from("pesanan")
+      .insert([newOrder])
+      .select();
+
+    if (error) {
+      console.error("❌ Gagal buat pesanan:", error);
+      alert("Terjadi kesalahan saat membuat pesanan 😭");
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+    setLoadingRedirect(true);
+
+    setTimeout(() => {
+      setSelectedService(null);
+      setFormData({
+        weight: "",
+        quantity: "",
+        address: "",
+        estimatedDate: "",
+      });
+      router.push(`/orders/${data[0].id_pesanan}`);
     }, 2000);
   };
 
@@ -257,6 +315,12 @@ export default function ServicesPage() {
                                   estimatedDate: e.target.value,
                                 })
                               }
+                              min={new Date().toISOString().split("T")[0]} // hari ini
+                              max={(() => {
+                                const max = new Date();
+                                max.setDate(max.getDate() + 7);
+                                return max.toISOString().split("T")[0];
+                              })()}
                               className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
                               required
                             />

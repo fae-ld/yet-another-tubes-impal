@@ -1,7 +1,7 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/contexts/UserContext";
 
 export default function SettingsPage() {
   const { user, loading } = useUser();

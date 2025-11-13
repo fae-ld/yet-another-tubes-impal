@@ -13,7 +13,7 @@ import {
   ReceiptText,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/contexts/UserContext";
 
 export default function DashboardLayout({ children }) {
   const router = useRouter();

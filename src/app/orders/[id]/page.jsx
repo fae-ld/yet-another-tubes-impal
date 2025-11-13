@@ -1,4 +1,3 @@
-// src\app\orders\[id]\page.jsx
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
@@ -6,48 +5,118 @@ import { useEffect, useState } from "react";
 import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
 import DashboardLayout from "@/components/DashboardLayout";
 import { Button } from "@/components/ui/button";
-import { useUser } from "@/context/UserContext";
-
-const ordersData = [
-  {
-    id: 1,
-    service: "Cuci Kering Cepat",
-    date: "2025-11-10",
-    status: "Pending",
-  },
-  { id: 2, service: "Setrika Saja", date: "2025-11-09", status: "In Progress" },
-  { id: 3, service: "Cuci & Setrika", date: "2025-11-08", status: "Done" },
-  { id: 4, service: "Cuci Cepat", date: "2025-11-07", status: "Batal" },
-];
+import { useUser } from "@/contexts/UserContext";
+import { supabase } from "@/lib/supabase";
 
 export default function OrderDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
+  const { user, loading: userLoading } = useUser();
+
   const [order, setOrder] = useState(null);
+  const [loading, setLoading] = useState(true);
 
-  const { user, loading } = useUser();
-
+  // Fetch data pesanan berdasarkan id
   useEffect(() => {
-    const data = ordersData.find((o) => o.id === parseInt(id));
-    setOrder(data);
-  }, [id]);
+    if (userLoading) return;
+    if (!user) return;
 
-  // load Snap.js
+    const fetchOrder = async () => {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from("pesanan")
+        .select("*")
+        .eq("id_pelanggan", user.id)
+        .eq("id_pesanan", id)
+        .single();
+
+      if (error) {
+        console.error("Gagal mengambil pesanan:", error);
+      } else {
+        setOrder(data);
+      }
+      setLoading(false);
+    };
+
+    fetchOrder();
+  }, [id, user, userLoading]);
+
+  // Load Snap.js untuk Midtrans
   useEffect(() => {
     if (!window.snap) {
       const script = document.createElement("script");
       script.src = "https://app.sandbox.midtrans.com/snap/snap.js";
       script.setAttribute(
         "data-client-key",
-        process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY,
+        process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY
       );
       script.async = true;
       document.body.appendChild(script);
     }
   }, []);
-  
-  // TODO: Skeleton
-  if (loading) {
+
+  const handleSnapPay = async () => {
+    try {
+      const res = await fetch("/api/create-snap-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gross_amount: order.total_biaya_final || 25000,
+          name: user.user_metadata?.full_name || "User name",
+          email: user.email,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.token) {
+        window.snap.pay(data.token, {
+          onSuccess: async (result) => {
+            console.log("✅ success:", result);
+
+            // Update status di tabel pesanan
+            const { error: updateError } = await supabase
+              .from("pesanan")
+              .update({
+                status_pembayaran: "Paid",
+                status_pesanan: "In Progress",
+              })
+              .eq("id_pesanan", order.id_pesanan || id); // fallback ke param
+
+            if (updateError) {
+              console.error("Gagal update pesanan:", updateError);
+            }
+
+            // Insert ke tabel pembayaran
+            const { error: insertError } = await supabase.from("pembayaran").insert([
+              {
+                id_pesanan: order.id_pesanan || id,
+                metode: "QRIS",
+                jumlah: order.total_biaya_final || 25000,
+                tgl_pembayaran: new Date().toISOString(),
+              },
+            ]);
+
+            if (insertError) {
+              console.error("Gagal insert pembayaran:", insertError);
+            }
+
+            // Reload biar UI update
+            window.location.reload();
+          },
+          onPending: (result) => console.log("🕒 pending:", result),
+          onError: (result) => console.log("❌ error:", result),
+          onClose: () => console.log("popup closed by user"),
+        });
+      } else {
+        console.error("no token from backend:", data);
+      }
+    } catch (err) {
+      console.error("snap pay error:", err);
+    }
+  };
+
+  if (loading || userLoading) {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
@@ -71,43 +140,13 @@ export default function OrderDetailsPage() {
     );
   }
 
-  const handleSnapPay = async () => {
-    try {
-      const res = await fetch("/api/create-snap-transaction", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          gross_amount: 25000,
-          name: user.user_metadata?.full_name || "User name",
-          email: user.email,
-        }),
-      });
-
-      const data = await res.json();
-
-      if (data.token) {
-        window.snap.pay(data.token, {
-          onSuccess: (result) => {
-            console.log("✅ success:", result)
-            window.location.reload();
-          },
-          onPending: (result) => console.log("🕒 pending:", result),
-          onError: (result) => console.log("❌ error:", result),
-          onClose: () => console.log("popup closed by user"),
-        });
-      } else {
-        console.error("no token from backend:", data);
-      }
-    } catch (err) {
-      console.error("snap pay error:", err);
-    }
-  };
-
   if (!order) {
     return (
-      <div className="flex items-center justify-center h-screen text-gray-600">
-        Loading...
-      </div>
+      <DashboardLayout>
+        <div className="flex items-center justify-center min-h-screen text-gray-500">
+          Pesanan tidak ditemukan 🧐
+        </div>
+      </DashboardLayout>
     );
   }
 
@@ -122,7 +161,7 @@ export default function OrderDetailsPage() {
       { label: "Selesai 📦", done: status === "Done" },
     ];
 
-    if (status === "Pending") {
+    if (order.status_pembayaran === "Pending") {
       return (
         <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-700 text-center mt-4">
           💰 Pesanan belum dibayar.
@@ -138,7 +177,7 @@ export default function OrderDetailsPage() {
       );
     }
 
-    if (status === "Batal") {
+    if (order.status_pesanan === "Batal") {
       return (
         <div className="bg-red-50 border border-red-200 p-4 rounded-lg text-red-600 text-center mt-4">
           ❌ Pesanan dibatalkan karena keterlambatan pembayaran.
@@ -163,7 +202,9 @@ export default function OrderDetailsPage() {
               <Clock size={20} className="text-gray-400" />
             )}
             <span
-              className={`${step.done ? "text-blue-700 font-medium" : "text-gray-500"}`}
+              className={`${
+                step.done ? "text-blue-700 font-medium" : "text-gray-500"
+              }`}
             >
               {step.label}
             </span>
@@ -216,19 +257,23 @@ export default function OrderDetailsPage() {
 
           <div className="text-center">
             <h1 className="text-2xl font-bold text-blue-700 mb-2">
-              {order.service}
+              {order.jenis_layanan}
             </h1>
-            <p className="text-gray-500">{order.date}</p>
+            <p className="text-gray-500">
+              {new Date(order.tgl_pesanan).toLocaleDateString("id-ID")}
+            </p>
 
             <div
-              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full mt-3 text-sm font-medium ${getStatusColor(order.status)}`}
+              className={`inline-flex items-center gap-2 px-3 py-1 rounded-full mt-3 text-sm font-medium ${getStatusColor(
+                order.status_pesanan
+              )}`}
             >
-              {getStatusIcon(order.status)}
-              {order.status}
+              {getStatusIcon(order.status_pesanan)}
+              {order.status_pesanan}
             </div>
           </div>
 
-          {renderTracker(order.status)}
+          {renderTracker(order.status_pesanan)}
         </div>
       </div>
     </DashboardLayout>

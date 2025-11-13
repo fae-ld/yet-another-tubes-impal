@@ -1,5 +1,5 @@
 import "./globals.css";
-import { UserProvider } from "@/context/UserContext";
+import { UserProvider } from "@/contexts/UserContext";
 
 export const metadata = {
   title: "LaundryGo",

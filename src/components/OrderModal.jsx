@@ -4,7 +4,7 @@ import * as Dialog from "@radix-ui/react-dialog";
 import { Button } from "@/components/ui/button";
 import Image from "next/image";
 import { useState } from "react";
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/contexts/UserContext";
 
 export default function OrderModal({ order, open, onClose }) {
   const { user } = useUser();

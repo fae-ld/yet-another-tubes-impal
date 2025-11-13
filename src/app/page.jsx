@@ -2,7 +2,7 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import LoginForm from "@/components/LoginForm";
-import { useUser } from "@/context/UserContext";
+import { useUser } from "@/contexts/UserContext";
 
 export default function Page() {
   const { user, loading } = useUser();
