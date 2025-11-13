@@ -1,18 +1,20 @@
-'use client'
+"use client";
 
-import { Button } from "@/components/ui/button"
-import { LogOut } from "lucide-react"
-import { useEffect } from "react"
-import { supabase } from "../lib/supabase"
+import { Button } from "@/components/ui/button";
+import { LogOut } from "lucide-react";
+import { useEffect } from "react";
+import { supabase } from "../lib/supabase";
 
 export default function HomeSection({ user }) {
-
   // 🧾 Load Midtrans Snap script (sekali aja)
   // Kalau dimuat ulang bisa bikin error atau tombol bayar gak jalan.
   useEffect(() => {
     const snapScript = document.createElement("script");
     snapScript.src = "https://app.sandbox.midtrans.com/snap/snap.js";
-    snapScript.setAttribute("data-client-key", process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY);
+    snapScript.setAttribute(
+      "data-client-key",
+      process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY,
+    );
     snapScript.async = true;
 
     document.body.appendChild(snapScript);
@@ -24,8 +26,8 @@ export default function HomeSection({ user }) {
 
   // Logout
   const logout = async () => {
-    await supabase.auth.signOut()
-  }
+    await supabase.auth.signOut();
+  };
 
   // Handle pembayaran
   const handlePayment = async () => {
@@ -61,9 +63,7 @@ export default function HomeSection({ user }) {
       </h1>
       <p className="text-gray-600">Email: {user.email}</p>
 
-      <Button onClick={handlePayment}>
-        Bayar Sekarang
-      </Button>
+      <Button onClick={handlePayment}>Bayar Sekarang</Button>
 
       <Button
         variant="destructive"
@@ -74,5 +74,5 @@ export default function HomeSection({ user }) {
         Logout
       </Button>
     </div>
-  )
+  );
 }

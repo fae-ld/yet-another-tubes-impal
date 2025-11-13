@@ -23,7 +23,7 @@ export async function POST(req) {
     },
     gopay: {
       enable_callback: true,
-      callback_url: `${origin}`, // optional, bebas kamu ubah
+      callback_url: `${origin}`
     },
   };
 
@@ -37,7 +37,7 @@ export async function POST(req) {
         error: "Gagal membuat transaksi",
         detail: err.ApiResponse || err.message,
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

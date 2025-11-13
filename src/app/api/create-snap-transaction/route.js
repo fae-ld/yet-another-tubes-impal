@@ -53,7 +53,7 @@ export async function POST(req) {
         error: "Gagal membuat transaksi",
         detail: err.message,
       }),
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

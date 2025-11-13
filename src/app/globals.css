@@ -124,12 +124,12 @@
 /* modal? */
 /* Modal slide up bounce */
 /* TODO: Rename? idk kurang representative sih */
-@keyframes slideUpBounce { 
+@keyframes slideUpBounce {
   0% {
-      opacity: 0;
-      transform: scale(0.95);
-    }
-  
+    opacity: 0;
+    transform: scale(0.95);
+  }
+
   100% {
     opacity: 1;
     transform: scale(1);

@@ -1,55 +1,56 @@
-'use client'
+"use client";
 
-import * as Dialog from '@radix-ui/react-dialog'
-import { Button } from '@/components/ui/button'
-import Image from 'next/image'
-import { useState } from 'react'
-import { useUser } from '@/context/UserContext'
+import * as Dialog from "@radix-ui/react-dialog";
+import { Button } from "@/components/ui/button";
+import Image from "next/image";
+import { useState } from "react";
+import { useUser } from "@/context/UserContext";
 
 export default function OrderModal({ order, open, onClose }) {
-  const { user } = useUser()
-  const [qrUrl, setQrUrl] = useState(null)
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState(null)
+  const { user } = useUser();
+  const [qrUrl, setQrUrl] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-  if (!order) return null
+  if (!order) return null;
 
   const handlePayQRIS = async () => {
-    setLoading(true)
-    setError(null)
+    setLoading(true);
+    setError(null);
     try {
-      const res = await fetch('/api/create-transaction', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const res = await fetch("/api/create-transaction", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           gross_amount: 25000,
           name: user.user_metadata?.full_name,
           email: user.email,
         }),
-      })
+      });
 
-      const data = await res.json()
+      const data = await res.json();
 
       if (data.actions) {
         // cari URL QR dari response
         const qrAction = data.actions.find(
-          (a) => a.name === 'generate-qr-code' || a.name === 'generate-qr-code-v2'
-        )
+          (a) =>
+            a.name === "generate-qr-code" || a.name === "generate-qr-code-v2",
+        );
         if (qrAction) {
-          setQrUrl(qrAction.url)
+          setQrUrl(qrAction.url);
         } else {
-          setError('Gagal menemukan QR Code dari Midtrans.')
+          setError("Gagal menemukan QR Code dari Midtrans.");
         }
       } else {
-        setError('Respons Midtrans tidak valid.')
+        setError("Respons Midtrans tidak valid.");
       }
     } catch (err) {
-      console.error('QRIS error:', err)
-      setError('Gagal membuat transaksi.')
+      console.error("QRIS error:", err);
+      setError("Gagal membuat transaksi.");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <Dialog.Root open={open} onOpenChange={(open) => !open && onClose()}>
@@ -60,13 +61,21 @@ export default function OrderModal({ order, open, onClose }) {
             Order #{order.id}
           </Dialog.Title>
 
-          <p><strong>Service:</strong> {order.service}</p>
-          <p><strong>Date:</strong> {order.date}</p>
-          <p><strong>Status:</strong> {order.status}</p>
+          <p>
+            <strong>Service:</strong> {order.service}
+          </p>
+          <p>
+            <strong>Date:</strong> {order.date}
+          </p>
+          <p>
+            <strong>Status:</strong> {order.status}
+          </p>
 
-          {order.status === 'Pending' && (
+          {order.status === "Pending" && (
             <div className="mt-4 p-4 border rounded-lg border-blue-200 bg-blue-50 flex flex-col items-center gap-4">
-              <h3 className="font-semibold text-blue-800 text-lg">Bayar dengan QRIS 📱</h3>
+              <h3 className="font-semibold text-blue-800 text-lg">
+                Bayar dengan QRIS 📱
+              </h3>
 
               {!qrUrl ? (
                 <Button
@@ -74,7 +83,7 @@ export default function OrderModal({ order, open, onClose }) {
                   disabled={loading}
                   className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
                 >
-                  {loading ? 'Membuat QR...' : 'Buat QRIS'}
+                  {loading ? "Membuat QR..." : "Buat QRIS"}
                 </Button>
               ) : (
                 <div className="flex flex-col items-center gap-3">
@@ -85,7 +94,9 @@ export default function OrderModal({ order, open, onClose }) {
                     height={220}
                     className="rounded-lg border"
                   />
-                  <p className="text-sm text-gray-500">Scan pakai aplikasi e-wallet kamu</p>
+                  <p className="text-sm text-gray-500">
+                    Scan pakai aplikasi e-wallet kamu
+                  </p>
                 </div>
               )}
 
@@ -103,5 +114,5 @@ export default function OrderModal({ order, open, onClose }) {
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
-  )
+  );
 }
