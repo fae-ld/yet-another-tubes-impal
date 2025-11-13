@@ -27,13 +27,17 @@ export default function OrdersPage() {
         .order("tgl_pesanan", { ascending: false });
 
       if (error) {
-        console.error("Gagal mengambil data pesanan:", error);
+        console.error("Gagal mengambil data pesanan:", error); 
       } else {
         // Format data biar match ke struktur UI lama
         const formatted = data.map((item) => ({
           id: item.id_pesanan,
           service: item.jenis_layanan,
-          date: new Date(item.tgl_pesanan).toISOString().split("T")[0],
+          date: new Date(item.tgl_pesanan).toLocaleDateString("id-ID", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          }),
           status:
             item.status_pesanan === "Baru"
               ? "Pending"

@@ -250,9 +250,12 @@ export default function OrderDetailsPage() {
         <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6 relative">
           <button
             onClick={() => router.push("/orders")}
-            className="flex items-center gap-2 text-blue-600 hover:text-blue-800 transition mb-4"
+            className="flex items-center gap-2 bg-blue-50 text-blue-700 px-4 py-2 rounded-lg shadow-sm 
+                      hover:bg-blue-100 hover:scale-[0.95] hover:shadow-md 
+                      transition-all duration-200 cursor-pointer mb-4"
           >
-            <ArrowLeft size={20} /> <span>Kembali</span>
+            <ArrowLeft size={20} />
+            <span className="font-medium">Kembali</span>
           </button>
 
           <div className="text-center">
@@ -260,7 +263,11 @@ export default function OrderDetailsPage() {
               {order.jenis_layanan}
             </h1>
             <p className="text-gray-500">
-              {new Date(order.tgl_pesanan).toLocaleDateString("id-ID")}
+              {new Date(order.tgl_pesanan).toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
             </p>
 
             <div
