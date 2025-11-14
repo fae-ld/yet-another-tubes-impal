@@ -25,11 +25,21 @@ export default function LoginForm() {
     e.preventDefault();
     if (isLoginForm) {
       // LOGIN
-      const { error } = await supabase.auth.signInWithPassword({
+      const {
+        data: { session },
+        error,
+      } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
-      if (error) alert(error.message);
+
+      if (error) return alert(error.message);
+
+      await fetch("/api/set-role", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: session.user.id }),
+      });
     } else {
       // REGISTER
       if (password !== confirmPassword) return alert("Passwords do not match.");
@@ -49,7 +59,7 @@ export default function LoginForm() {
   const loginWithGoogle = async () => {
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin }, // redirect ke halaman ini
     });
     if (error) alert("Google login failed: " + error.message);
   };
