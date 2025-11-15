@@ -1,13 +1,15 @@
+// pages/index.js atau app/page.jsx
 'use client'
 
 import DashboardLayout from '@/components/DashboardLayout'
 import LoginForm from '@/components/LoginForm'
+import HomePageContent from '@/app/HomePageContent' // Import komponen baru
 import { useUser } from '@/context/UserContext'
 
 export default function Page() {
   const { user, loading } = useUser()
 
-  // Skeleton / loading screen
+  // Skeleton / loading screen (tetap sama)
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -20,16 +22,24 @@ export default function Page() {
     )
   }
 
-  return user ? (
-    <DashboardLayout>
-      <div>
-        <h1 className="text-3xl font-bold text-blue-600">Heyyy, selamat datang di LaundryGo~</h1>
-        <p className="mt-4 text-gray-700">dude ... what the flip</p>
+  return (
+    // Jika user sudah login, tampilkan DashboardLayout dengan konten homepage
+    // Perhatikan: Konten ini mungkin lebih cocok sebagai landing page (jika belum login)
+    // atau sebagai halaman "Home" di dalam dashboard. Saya asumsikan Anda ingin konten ini muncul.
+    user ? (
+      <DashboardLayout>
+        {/* Konten homepage yang sudah dibuat */}
+        <HomePageContent /> 
+      </DashboardLayout>
+    ) : (
+      // Jika user belum login, tampilkan halaman Login
+      <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
+        {/* Pilihan 1: Jika ini landing page, tampilkan HomePageContent *TANPA* DashboardLayout */}
+        {/* <HomePageContent /> */} 
+        
+        {/* Pilihan 2: Jika ini halaman login seperti kode Anda sebelumnya */}
+        <LoginForm />
       </div>
-    </DashboardLayout>
-  ) : (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
-      <LoginForm />
-    </div>
+    )
   )
 }
