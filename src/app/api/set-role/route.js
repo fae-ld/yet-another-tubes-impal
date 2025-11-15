@@ -24,11 +24,11 @@ export async function POST(req) {
     .eq("id_pelanggan", userId)
     .single();
 
-  if (pelangganError) {
-    console.log("Error fetch pelanggan:", pelangganError);
-  } else {
-    console.log("Pelanggan data:", pelanggan);
-  }
+  // if (pelangganError) {
+  //   console.log("Error fetch pelanggan:", pelangganError);
+  // } else {
+  //   console.log("Pelanggan data:", pelanggan);
+  // }
 
   if (pelanggan) role = "pelanggan";
 
@@ -39,11 +39,11 @@ export async function POST(req) {
     .eq("id_staf", userId)
     .single();
 
-  if (stafError) {
-    console.log("Error fetch staf:", stafError);
-  } else {
-    console.log("Staf data:", staf);
-  }
+  // if (stafError) {
+  //   console.log("Error fetch staf:", stafError);
+  // } else {
+  //   console.log("Staf data:", staf);
+  // }
 
   if (staf) role = "staf";
 
