@@ -1,0 +1,57 @@
+import { NextResponse } from "next/server";
+import { SignJWT } from "jose";
+import { createClient } from "@supabase/supabase-js";
+
+export const dynamic = "force-dynamic";
+
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_SERVICE_ROLE_KEY,
+);
+
+export async function POST(req) {
+  const { userId } = await req.json();
+
+  if (!userId)
+    return NextResponse.json({ error: "User ID required" }, { status: 400 });
+
+  let role = null;
+
+  const { data: pelanggan } = await supabase
+    .from("pelanggan")
+    .select("*")
+    .eq("id_pelanggan", userId)
+    .single();
+
+  if (pelanggan) role = "pelanggan";
+
+  const { data: staf } = await supabase
+    .from("staf")
+    .select("*")
+    .eq("id_staf", userId)
+    .single();
+
+  if (staf) role = "staf";
+
+  if (!role)
+    return NextResponse.json({ error: "User role not found" }, { status: 400 });
+
+  const token = await new SignJWT({ role })
+    .setProtectedHeader({ alg: "HS256" })
+    .setExpirationTime("1d")
+    .sign(new TextEncoder().encode(process.env.COOKIE_SECRET));
+
+  const res = NextResponse.json({ success: true });
+
+  res.cookies.set({
+    name: "role",
+    value: token,
+    httpOnly: true,
+    secure: false,
+    sameSite: "lax",
+    path: "/",
+    maxAge: 86400,
+  });
+
+  return res;
+}
