@@ -2,16 +2,16 @@
 
 import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
-import DashboardLayout from "@/components/DashboardLayout";
 import StaffLoginForm from "@/components/staff/StaffLoginForm";
-import StaffDashboard from "@/components/staff/StaffDashboard";
+import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 
 export default function StaffPage() {
   const { user, loading } = useUser();
   const [role, setRole] = useState(null);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [roleLoading, setRoleLoading] = useState(true); // 👈 NEW!
 
-  // Setelah OAuth redirect → panggil /api/set-role (mirip page utama kamu)
+  // Setelah OAuth redirect → panggil /api/set-role
   useEffect(() => {
     const applyRoleAfterOAuth = async () => {
       if (!user) return;
@@ -23,13 +23,14 @@ export default function StaffPage() {
           body: JSON.stringify({ userId: user.id }),
         });
 
-        // cek role terbaru
         const r = await fetch("/api/debug-role");
         const data = await r.json();
         setRole(data.role);
         setIsLoggedIn(true);
+        setRoleLoading(false); // 👈 DONE loading role!
       } catch (err) {
         console.error("Failed to apply role:", err);
+        setRoleLoading(false);
       }
     };
 
@@ -37,7 +38,7 @@ export default function StaffPage() {
   }, [user]);
 
   // Skeleton loading sama persis nuansanya
-  if (loading) {
+  if (loading || roleLoading) {   // 👈 SHOW SKELETON until role is ready
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
         <div className="w-full max-w-4xl bg-white rounded-xl shadow-lg p-8 animate-pulse">
@@ -60,7 +61,7 @@ export default function StaffPage() {
     setIsLoggedIn(true);
   };
 
-  // belum login → tampilkan LoginForm
+  // ini cuma muncul kalau bener-bener belum login
   if (!user || !isLoggedIn || !role) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
@@ -69,7 +70,7 @@ export default function StaffPage() {
     );
   }
 
-  // memastikan hanya role staf yg boleh (optional check)
+  // memastikan hanya role staf yg boleh
   if (role !== "staf") {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -82,13 +83,13 @@ export default function StaffPage() {
 
   // Logged in & staf → tampilkan dashboard
   return (
-    <DashboardLayout>
+    <StaffDashboardLayout>
       <div>
         <h1 className="text-3xl font-bold text-blue-600">
           Heyyy, selamat datang di Dashboard Staff~
         </h1>
         <p className="mt-4 text-gray-700">dude ... what the flip 😳</p>
       </div>
-    </DashboardLayout>
+    </StaffDashboardLayout>
   );
 }
