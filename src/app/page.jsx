@@ -23,16 +23,14 @@ export default function Page() {
       });
 
       const data = await res.json();
-      console.log("Set-role after OAuth:", data);
 
-      if (data.success) {
-        setIsLoggedIn(true);
-
-        // fetch role dari debug-role
-        const roleRes = await fetch("/api/debug-role");
-        const roleData = await roleRes.json();
-        setRole(roleData.role);
-      }
+      // if (data.success) {
+      //   setIsLoggedIn(true);
+      //   // fetch role dari debug-role
+      //   const roleRes = await fetch("/api/debug-role");
+      //   const roleData = await roleRes.json();
+      //   setRole(roleData.role);
+      // }
     };
 
     setRoleAfterOAuth();
@@ -61,7 +59,7 @@ export default function Page() {
     }
   };
 
-  if (!user || !isLoggedIn) {
+  if (!user) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
         <LoginForm onLogin={handleLogin} />
@@ -71,7 +69,6 @@ export default function Page() {
 
   return (
     <DashboardLayout>
-      <p>Current role: {role || "guest"}</p>
       <div>
         <h1 className="text-3xl font-bold text-blue-600">
           Heyyy, selamat datang di LaundryGo~

@@ -173,6 +173,15 @@ export default function LoginForm() {
           <FcGoogle className="text-xl" />
           Lanjutkan dengan Google
         </Button>
+        <p className="text-sm text-center mt-4">
+          E-eh? Kamu staff?{" "}
+          <a
+            href="/staff"
+            className="underline font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+          >
+            Lewat sini
+          </a>
+        </p>
       </div>
     </div>
   );

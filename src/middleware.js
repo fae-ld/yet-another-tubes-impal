@@ -8,16 +8,12 @@ export async function middleware(req) {
   const url = req.nextUrl.clone();
   const { pathname } = req.nextUrl;
 
-  // exclude halaman login dan API route
-  if (pathname === "/" || pathname.startsWith("/api")) {
-    return NextResponse.next();
-  }
-
-  // ambil cookie role
+  // ambil cookie
   const token = req.cookies.get(COOKIE_NAME)?.value;
 
   let role = null;
 
+  // kalau ada token, verify
   if (token) {
     try {
       const { payload } = await jwtVerify(
@@ -30,19 +26,20 @@ export async function middleware(req) {
     }
   }
 
-  // jika tidak ada role → redirect ke login
+  // ====== RULE: BELUM LOGIN → BEBAS MASUK KEMANA SAJA ======
   if (!role) {
-    url.pathname = "/";
-    return NextResponse.redirect(url);
+    return NextResponse.next();
   }
 
-  // staff hanya boleh ke /staff
+  // ====== SUDAH LOGIN → CEK ROLE ======
+
+  // kalau staff → hanya boleh ke /staff*
   if (role === "staf" && !pathname.startsWith("/staff")) {
     url.pathname = "/staff";
     return NextResponse.redirect(url);
   }
 
-  // pelanggan tidak boleh ke /staff
+  // kalau pelanggan → tidak boleh ke /staff*
   if (role === "pelanggan" && pathname.startsWith("/staff")) {
     url.pathname = "/";
     return NextResponse.redirect(url);
@@ -52,7 +49,5 @@ export async function middleware(req) {
 }
 
 export const config = {
-  matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|images).*)",
-  ],
+  matcher: ["/((?!_next/static|_next/image|favicon\\.ico|images|api).*)"],
 };
