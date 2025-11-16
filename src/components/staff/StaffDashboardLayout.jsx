@@ -13,6 +13,7 @@ import {
   UserCog,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
+import { supabase } from "@/lib/supabase";
 
 export default function StaffDashboardLayout({ children }) {
   const router = useRouter();
