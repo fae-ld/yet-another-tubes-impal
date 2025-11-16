@@ -206,10 +206,12 @@ export default function OrderDetailPage() {
       <div className="p-6 text-center text-gray-600">Order tidak ditemukan</div>
     );
 
-  const currentSubIndex = ORDER_SUBSTEPS.findIndex(
-    (s) => s.label === (order.latestStatus?.status || "Pesanan Baru"),
-  );
+  // const currentSubIndex = ORDER_SUBSTEPS.findIndex(
+  //   (s) => s.label === (order.latestStatus?.status || "Pesanan Baru"),
+  // );
 
+  const currentSubIndex = order.riwayat_status_pesanan.length == 0 ? 0 : order.riwayat_status_pesanan.length - 1;
+  
   // Helper: warna badge berdasarkan super status
   const getStepColor = (subStatus) => {
     const superStatus = getSuperStatus(subStatus);
