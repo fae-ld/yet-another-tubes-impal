@@ -2,10 +2,54 @@
 
 import DashboardLayout from "@/components/DashboardLayout";
 import { useRouter } from "next/navigation";
-import { useUser } from "@/contexts/UserContext"; // pastikan path sesuai
+import { useUser } from "@/contexts/UserContext";
 import { supabase } from "@/lib/supabase";
 import { useEffect, useState } from "react";
 import { Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
+
+// =========================================================
+// FUNGSI UTILITY: MAPPING SUB-STATUS KE SUPER STATUS BARU
+// =========================================================
+
+/**
+ * Maps the detailed sub-status (from DB: status_pesanan) to the main Super Status
+ * used for UI display (Pending, In Progress, Done, Cancelled).
+ */
+const getSuperStatus = (subStatus) => {
+  // Status Akhir
+  if (subStatus === "Selesai") return "Done";
+  
+  // Status Pembatalan
+  if (subStatus === "Dibatalkan") return "Batal"; // Menggunakan "Batal" agar sesuai dengan switch case di bawah
+
+  // Status Operasional (Sedang Dikerjakan)
+  if (
+    [
+      "Penjemputan",
+      "Verifikasi Berat", 
+      "Sedang Dicuci",
+      "Sedang Disetrika",
+      "Selesai Dicuci",
+      "Sedang Diantar",
+    ].includes(subStatus)
+  ) {
+    return "In Progress";
+  }
+
+  // Status Menunggu (Perlu Aksi/Belum Dimulai)
+  if (
+    [
+      "Pesanan Dibuat", 
+      "Menunggu Pembayaran", 
+    ].includes(subStatus)
+  ) {
+    return "Pending";
+  }
+  
+  // Default/Fallback
+  return "Pending"; 
+};
+
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -16,7 +60,7 @@ export default function OrdersPage() {
   // --- Fetch data pesanan dari Supabase ---
   useEffect(() => {
     if (userLoading) return;
-    if (!user) return; // belum login, skip
+    if (!user) return; 
 
     const fetchOrders = async () => {
       setLoading(true);
@@ -31,21 +75,24 @@ export default function OrdersPage() {
       if (error) {
         console.error("Gagal mengambil data pesanan:", error);
       } else {
-        // Format data biar match ke struktur UI lama
-        const formatted = data.map((item) => ({
-          id: item.id_pesanan,
-          service: item.jenis_layanan,
-          date: new Date(item.tgl_pesanan).toLocaleDateString("id-ID", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          }),
-          status:
-            item.status_pesanan === "Baru"
-              ? "Pending"
-              : item.status_pesanan || "Pending",
-          paymentStatus: item.status_pembayaran || "Pending",
-        }));
+        // --- LOGIKA UTAMA PERUBAHAN DI SINI ---
+        const formatted = data.map((item) => {
+          // 1. Tentukan Super Status menggunakan fungsi baru
+          const superStatus = getSuperStatus(item.status_pesanan);
+          
+          return {
+            id: item.id_pesanan,
+            service: item.jenis_layanan,
+            date: new Date(item.tgl_pesanan).toLocaleDateString("id-ID", {
+              day: "numeric",
+              month: "short",
+              year: "numeric",
+            }),
+            // 2. Gunakan Super Status untuk display status
+            status: superStatus, 
+            paymentStatus: item.status_pembayaran || "Belum Dibayar", // Ganti "Pending" ke "Belum Dibayar" agar lebih jelas
+          };
+        });
         setOrders(formatted);
       }
       setLoading(false);
@@ -54,7 +101,7 @@ export default function OrdersPage() {
     fetchOrders();
   }, [user, userLoading]);
 
-  // --- Style dan icon status ---
+  // --- Style dan icon status (Tidak ada perubahan, karena menggunakan Super Status) ---
   const getStatusStyles = (status) => {
     switch (status) {
       case "Pending":
@@ -87,6 +134,7 @@ export default function OrdersPage() {
 
   return (
     <DashboardLayout>
+      {/* ... (Sisa JSX tetap sama) ... */}
       <div className="p-6">
         <h1 className="text-3xl font-bold text-blue-600 mb-6">Orders</h1>
 

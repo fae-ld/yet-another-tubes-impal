@@ -6,11 +6,12 @@ import { supabase } from "@/lib/supabase";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 
 const ORDER_SUBSTEPS = [
+  // ... (Array ini sudah benar dan tidak diubah) ...
   {
     step: 1,
-    label: "Pesanan Baru",
+    label: "Pesanan Dibuat",
     icon: "🧾",
-    desc: "Baru masuk sistem, belum mulai.",
+    desc: "Order berhasil dibuat dan masuk sistem.",
   },
   {
     step: 2,
@@ -20,30 +21,42 @@ const ORDER_SUBSTEPS = [
   },
   {
     step: 3,
-    label: "Sedang Dicuci",
-    icon: "💧",
-    desc: "Pakaian sedang dicuci.",
+    label: "Verifikasi Berat",
+    icon: "⚖️",
+    desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi.",
   },
   {
     step: 4,
+    label: "Menunggu Pembayaran",
+    icon: "💳",
+    desc: "Berat/harga akhir sudah dikonfirmasi, menunggu pembayaran dari pelanggan.",
+  },
+  {
+    step: 5,
+    label: "Sedang Dicuci",
+    icon: "💧",
+    desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas).",
+  },
+  {
+    step: 6,
     label: "Sedang Disetrika",
     icon: "🔥",
     desc: "Proses setrika / finishing.",
   },
   {
-    step: 5,
+    step: 7,
     label: "Selesai Dicuci",
     icon: "📦",
     desc: "Pakaian selesai dicuci, siap dikirim.",
   },
   {
-    step: 6,
+    step: 8,
     label: "Sedang Diantar",
     icon: "🛵",
     desc: "Kurir mengantar pakaian ke pelanggan.",
   },
   {
-    step: 7,
+    step: 9,
     label: "Selesai",
     icon: "✅",
     desc: "Pesanan diterima pelanggan, transaksi selesai.",
@@ -52,19 +65,54 @@ const ORDER_SUBSTEPS = [
 
 // Mapping sub-status ke super status
 const getSuperStatus = (subStatus) => {
+  // Status Akhir
   if (subStatus === "Selesai") return "Done";
+  
+  // Status Pembatalan
+  if (subStatus === "Dibatalkan") return "Cancelled"; // Menggunakan 'Cancelled' untuk konsistensi
+
+  // Status Operasional (Sedang Dikerjakan)
   if (
     [
-      "Pesanan Baru",
-      "Penjemputan",
+      "Penjemputan", 
+      "Verifikasi Berat", 
       "Sedang Dicuci",
       "Sedang Disetrika",
       "Selesai Dicuci",
       "Sedang Diantar",
     ].includes(subStatus)
-  )
+  ) {
     return "In Progress";
-  return "Pending";
+  }
+
+  // Status Menunggu (Awal/Pembayaran)
+  if (
+    [
+      "Pesanan Dibuat",
+      "Menunggu Pembayaran",
+    ].includes(subStatus)
+  ) {
+    return "Pending"; // Diperbaiki: Mengembalikan "Pending" agar cocok dengan switch case
+  }
+  
+  // Kasus fallback jika status tidak dikenal
+  return "Unknown Status"; 
+};
+
+const getStepColor = (subStatus) => {
+    const superStatus = getSuperStatus(subStatus);
+    switch (superStatus) {
+      case "Pending": 
+        return "bg-yellow-100 border-yellow-300 text-yellow-700";
+      case "In Progress":
+        return "bg-purple-100 border-purple-300 text-purple-700";
+      case "Done":
+        return "bg-green-100 border-green-300 text-green-700";
+      case "Cancelled": //  penanganan untuk status dibatalkan
+        return "bg-red-100 border-red-300 text-red-700";
+      default:
+        return "bg-gray-100 border-gray-200 text-gray-700";
+    }
 };
 
 export default function OrderDetailPage() {
@@ -108,7 +156,7 @@ export default function OrderDetailPage() {
         });
       } catch (err) {
         console.error(err);
-        setError(err.message || "Gagal mengambil data");
+        setError("Gagal mengambil data");
       } finally {
         setLoading(false);
       }
@@ -200,7 +248,13 @@ export default function OrderDetailPage() {
   };
 
   if (loading) return <div className="p-6 text-center">Loading...</div>;
-  if (error) return <div className="p-6 text-center text-red-600">{error}</div>;
+  if (error) {
+    return (
+      <StaffDashboardLayout>
+        <div className="p-6 text-center text-red-600">{error}</div>;
+      </StaffDashboardLayout>
+    )
+  }
   if (!order)
     return (
       <div className="p-6 text-center text-gray-600">Order tidak ditemukan</div>
@@ -213,19 +267,6 @@ export default function OrderDetailPage() {
   const currentSubIndex = order.riwayat_status_pesanan.length == 0 ? 0 : order.riwayat_status_pesanan.length - 1;
   
   // Helper: warna badge berdasarkan super status
-  const getStepColor = (subStatus) => {
-    const superStatus = getSuperStatus(subStatus);
-    switch (superStatus) {
-      case "Pending":
-        return "bg-yellow-100 border-yellow-300 text-yellow-700";
-      case "In Progress":
-        return "bg-purple-100 border-purple-300 text-purple-700";
-      case "Done":
-        return "bg-green-100 border-green-300 text-green-700";
-      default:
-        return "bg-gray-100 border-gray-200 text-gray-700";
-    }
-  };
 
   return (
     <StaffDashboardLayout>

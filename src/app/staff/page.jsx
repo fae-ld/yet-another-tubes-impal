@@ -38,7 +38,7 @@ export default function StaffPage() {
   }, [user]);
 
   // Skeleton loading sama persis nuansanya
-  if (loading || roleLoading) {
+  if (loading) {
     // 👈 SHOW SKELETON until role is ready
     return (
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
