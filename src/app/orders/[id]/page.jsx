@@ -420,8 +420,8 @@ export default function OrderDetailsPage() {
           {/* Review Form */}
           {/* Kondisi 1: Pesanan Selesai dan Belum Ada Ulasan */}
           {order.status_pesanan === "Selesai" &&
-            currentSubStatus == "Done" &&
-            superStatus == "Selesai" &&
+            currentSubStatus == "Selesai" &&
+            superStatus == "Done" &&
             !existingReview && (
               <div className="mt-3">
                 <ReviewForm
@@ -438,8 +438,8 @@ export default function OrderDetailsPage() {
 
           {/* Kondisi 2: Pesanan Selesai dan Sudah Ada Ulasan */}
           {order.status_pesanan === "Selesai" &&
-            currentSubStatus == "Done" &&
-            superStatus == "Selesai" &&
+            currentSubStatus == "Selesai" &&
+            superStatus == "Done" &&
             existingReview && (
               // Asumsi Anda telah mengimpor ReviewCard
               <div className="mt-3">

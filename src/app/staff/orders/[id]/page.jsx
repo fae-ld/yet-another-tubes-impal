@@ -184,7 +184,7 @@ const insertNotification = async (order, statusLabel) => {
 
 export default function OrderDetailPage() {
   const router = useRouter();
-  
+
   const { id: orderId } = useParams();
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -374,14 +374,14 @@ export default function OrderDetailPage() {
   return (
     <StaffDashboardLayout>
       <button
-                  onClick={() => router.push("/staff/orders")}
-                  className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg shadow-sm 
+        onClick={() => router.push("/staff/orders")}
+        className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg shadow-sm 
                               hover:bg-purple-100 hover:scale-[1.03] hover:shadow-md 
                               transition-all duration-200 active:scale-95 cursor-pointer mb-4"
-                >
-                  <ArrowLeft size={20} />
-                  <span className="font-medium">Kembali</span>
-                </button>
+      >
+        <ArrowLeft size={20} />
+        <span className="font-medium">Kembali</span>
+      </button>
       <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
         <h1 className="text-3xl font-bold text-purple-700">
           Detail Pesanan #{order.id_pesanan}
