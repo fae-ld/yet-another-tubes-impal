@@ -18,7 +18,7 @@ import { Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
 const getSuperStatus = (subStatus) => {
   // Status Akhir
   if (subStatus === "Selesai") return "Done";
-  
+
   // Status Pembatalan
   if (subStatus === "Dibatalkan") return "Batal"; // Menggunakan "Batal" agar sesuai dengan switch case di bawah
 
@@ -26,7 +26,7 @@ const getSuperStatus = (subStatus) => {
   if (
     [
       "Penjemputan",
-      "Verifikasi Berat", 
+      "Verifikasi Berat",
       "Sedang Dicuci",
       "Sedang Disetrika",
       "Selesai Dicuci",
@@ -37,19 +37,13 @@ const getSuperStatus = (subStatus) => {
   }
 
   // Status Menunggu (Perlu Aksi/Belum Dimulai)
-  if (
-    [
-      "Pesanan Dibuat", 
-      "Menunggu Pembayaran", 
-    ].includes(subStatus)
-  ) {
+  if (["Pesanan Dibuat", "Menunggu Pembayaran"].includes(subStatus)) {
     return "Pending";
   }
-  
-  // Default/Fallback
-  return "Pending"; 
-};
 
+  // Default/Fallback
+  return "Pending";
+};
 
 export default function OrdersPage() {
   const router = useRouter();
@@ -60,7 +54,7 @@ export default function OrdersPage() {
   // --- Fetch data pesanan dari Supabase ---
   useEffect(() => {
     if (userLoading) return;
-    if (!user) return; 
+    if (!user) return;
 
     const fetchOrders = async () => {
       setLoading(true);
@@ -79,7 +73,7 @@ export default function OrdersPage() {
         const formatted = data.map((item) => {
           // 1. Tentukan Super Status menggunakan fungsi baru
           const superStatus = getSuperStatus(item.status_pesanan);
-          
+
           return {
             id: item.id_pesanan,
             service: item.jenis_layanan,
@@ -89,7 +83,7 @@ export default function OrdersPage() {
               year: "numeric",
             }),
             // 2. Gunakan Super Status untuk display status
-            status: superStatus, 
+            status: superStatus,
             paymentStatus: item.status_pembayaran || "Belum Dibayar", // Ganti "Pending" ke "Belum Dibayar" agar lebih jelas
           };
         });

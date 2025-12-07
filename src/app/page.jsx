@@ -1,4 +1,3 @@
-
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
@@ -6,8 +5,7 @@ import LoginForm from "@/components/LoginForm";
 import { useUser } from "@/contexts/UserContext";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
-import HomePageContent from '@/app/HomePageContent' // Import komponen baru
-
+import HomePageContent from "@/app/HomePageContent"; // Import komponen baru
 
 export default function Page() {
   const { user, loading } = useUser();
@@ -77,18 +75,17 @@ export default function Page() {
     user ? (
       <DashboardLayout>
         {/* Konten homepage yang sudah dibuat */}
-        <HomePageContent /> 
+        <HomePageContent />
       </DashboardLayout>
     ) : (
       // Jika user belum login, tampilkan halaman Login
       <div className="flex items-center justify-center min-h-screen bg-gray-100 p-4">
         {/* Pilihan 1: Jika ini landing page, tampilkan HomePageContent *TANPA* DashboardLayout */}
-        {/* <HomePageContent /> */} 
-        
+        {/* <HomePageContent /> */}
+
         {/* Pilihan 2: Jika ini halaman login seperti kode Anda sebelumnya */}
         <LoginForm />
       </div>
     )
-  )
+  );
 }
-

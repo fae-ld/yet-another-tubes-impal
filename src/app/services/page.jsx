@@ -127,6 +127,18 @@ export default function ServicesPage() {
       return;
     }
 
+    if (data.length > 0) {
+      const { error: notifErr } = await supabase.from("notifikasi").insert({
+        id_user: user.id,
+        id_pesanan: data[0].id_pesanan,
+        tipe: "ORDER_CREATED",
+        konten:
+          "Pesanan Anda berhasil dibuat! Kami akan segera menjemput pakaian Anda.",
+      });
+      if (notifErr)
+        console.error("⚠️ Gagal insert notifikasi (CREATED):", notifErr);
+    }
+
     setLoading(false);
     setLoadingRedirect(true);
 

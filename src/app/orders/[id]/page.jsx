@@ -12,16 +12,46 @@ import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
 // KONSTANTA STATUS BARU
 // =========================================================
 const STATUS_INFO = {
-  "Pesanan Dibuat": { emoji: "🧾", desc: "Order berhasil dibuat, menunggu penjemputan." },
-  "Penjemputan": { emoji: "🚗", desc: "Kurir sedang menjemput pakaian ke alamat pelanggan." },
-  "Verifikasi Berat": { emoji: "⚖️", desc: "Pakaian sudah diterima dan sedang ditimbang/diverifikasi." },
-  "Menunggu Pembayaran": { emoji: "💳", desc: "Harga final telah dikonfirmasi, menunggu pembayaran pelanggan." },
-  "Sedang Dicuci": { emoji: "💧", desc: "Proses pencucian dimulai (setelah pembayaran lunas)." },
-  "Sedang Disetrika": { emoji: "🔥", desc: "Proses setrika / finishing sedang berlangsung." },
-  "Selesai Dicuci": { emoji: "📦", desc: "Semua pakaian selesai dicuci dan disetrika, siap dikirim." },
-  "Sedang Diantar": { emoji: "🛵", desc: "Kurir mengantar pakaian kembali ke pelanggan." },
-  "Selesai": { emoji: "✅", desc: "Pesanan diterima pelanggan, transaksi selesai." },
-  "Dibatalkan": { emoji: "❌", desc: "Pesanan dibatalkan (oleh pelanggan/admin)." },
+  "Pesanan Dibuat": {
+    emoji: "🧾",
+    desc: "Order berhasil dibuat, menunggu penjemputan.",
+  },
+  Penjemputan: {
+    emoji: "🚗",
+    desc: "Kurir sedang menjemput pakaian ke alamat pelanggan.",
+  },
+  "Verifikasi Berat": {
+    emoji: "⚖️",
+    desc: "Pakaian sudah diterima dan sedang ditimbang/diverifikasi.",
+  },
+  "Menunggu Pembayaran": {
+    emoji: "💳",
+    desc: "Harga final telah dikonfirmasi, menunggu pembayaran pelanggan.",
+  },
+  "Sedang Dicuci": {
+    emoji: "💧",
+    desc: "Proses pencucian dimulai (setelah pembayaran lunas).",
+  },
+  "Sedang Disetrika": {
+    emoji: "🔥",
+    desc: "Proses setrika / finishing sedang berlangsung.",
+  },
+  "Selesai Dicuci": {
+    emoji: "📦",
+    desc: "Semua pakaian selesai dicuci dan disetrika, siap dikirim.",
+  },
+  "Sedang Diantar": {
+    emoji: "🛵",
+    desc: "Kurir mengantar pakaian kembali ke pelanggan.",
+  },
+  Selesai: {
+    emoji: "✅",
+    desc: "Pesanan diterima pelanggan, transaksi selesai.",
+  },
+  Dibatalkan: {
+    emoji: "❌",
+    desc: "Pesanan dibatalkan (oleh pelanggan/admin).",
+  },
 };
 
 // =========================================================
@@ -44,17 +74,11 @@ const getSuperStatus = (subStatus) => {
     return "In Progress";
   }
 
-  if (
-    [
-      "Pesanan Dibuat",
-      "Menunggu Pembayaran",
-    ].includes(subStatus)
-  ) {
+  if (["Pesanan Dibuat", "Menunggu Pembayaran"].includes(subStatus)) {
     return "Pending";
   }
   return "Pending";
 };
-
 
 export default function OrderDetailsPage() {
   const { id } = useParams();
@@ -82,12 +106,13 @@ export default function OrderDetailsPage() {
           .single();
 
         if (pesananError) {
-            // Logika untuk 404 jika pesanan tidak ditemukan atau tidak valid
-            if (pesananError.code === "PGRST116") { // Error code jika single() tidak menemukan data
-                setOrder(null); 
-            } else {
-                throw pesananError;
-            }
+          // Logika untuk 404 jika pesanan tidak ditemukan atau tidak valid
+          if (pesananError.code === "PGRST116") {
+            // Error code jika single() tidak menemukan data
+            setOrder(null);
+          } else {
+            throw pesananError;
+          }
         }
         setOrder(pesanan);
 
@@ -133,7 +158,10 @@ export default function OrderDetailsPage() {
     }
   }, []);
 
-  const isPendingPayment = timeline.map(t => t.status).includes("Menunggu Pembayaran") && timeline.length == 4 && paymentData === null;
+  const isPendingPayment =
+    timeline.map((t) => t.status).includes("Menunggu Pembayaran") &&
+    timeline.length == 4 &&
+    paymentData === null;
 
   const handleSnapPay = async () => {
     // Pastikan status_pesanan saat ini adalah "Menunggu Pembayaran"
@@ -141,7 +169,7 @@ export default function OrderDetailsPage() {
       console.error("❌ Pesanan belum/sudah melewati tahap pembayaran.");
       return;
     }
-    
+
     if (!order?.id_pesanan || !order?.total_biaya_final) {
       console.error("❌ Order belum lengkap untuk diproses pembayaran.");
       return;
@@ -176,9 +204,9 @@ export default function OrderDetailsPage() {
           // STATUS PESANAN DIUBAH KE "Sedang Dicuci" setelah pembayaran lunas
           const { error: payErr } = await supabase
             .from("pesanan")
-            .update({ 
-                status_pembayaran: "Paid",
-                status_pesanan: "Sedang Dicuci" // Pindah ke tahap operasional selanjutnya
+            .update({
+              status_pembayaran: "Paid",
+              status_pesanan: "Sedang Dicuci", // Pindah ke tahap operasional selanjutnya
             })
             .eq("id_pesanan", order.id_pesanan);
 
@@ -206,7 +234,8 @@ export default function OrderDetailsPage() {
               {
                 id_pesanan: order.id_pesanan,
                 status: "Sedang Dicuci", // Status baru setelah lunas
-                deskripsi: "Pembayaran berhasil. Pesanan masuk antrian pencucian.",
+                deskripsi:
+                  "Pembayaran berhasil. Pesanan masuk antrian pencucian.",
                 waktu: new Date().toISOString(),
               },
             ]);
@@ -269,12 +298,11 @@ export default function OrderDetailsPage() {
     );
   }
 
-
   // =========================================================
   // LOGIKA TAMPILAN (DISESUAIKAN UNTUK SUPER STATUS)
   // =========================================================
   const currentSubStatus = order.status_pesanan || "";
-  const superStatus = getSuperStatus(currentSubStatus); 
+  const superStatus = getSuperStatus(currentSubStatus);
 
   const getStatusColor = (superStatus) => {
     switch (superStatus) {
@@ -310,7 +338,6 @@ export default function OrderDetailsPage() {
     <DashboardLayout>
       <div className="min-h-screen p-6 flex flex-col items-center">
         <div className="max-w-md w-full bg-white rounded-2xl shadow-lg p-6">
-          
           {/* Back button */}
           <button
             onClick={() => router.push("/orders")}
@@ -329,20 +356,21 @@ export default function OrderDetailsPage() {
             </h1>
             <p className="text-gray-500">
               {new Date(order.tgl_pesanan).toLocaleDateString("id-ID", {
-                day: "numeric", month: "short", year: "numeric",
+                day: "numeric",
+                month: "short",
+                year: "numeric",
               })}
             </p>
 
             {/* Menampilkan Status Saat Ini */}
             <div
               className={`inline-flex items-center gap-2 px-3 py-1 rounded-full mt-3 text-sm font-medium ${getStatusColor(
-                superStatus, 
+                superStatus,
               )}`}
             >
-              {getStatusIcon(superStatus)} 
+              {getStatusIcon(superStatus)}
               {currentSubStatus || "Status Belum Ditentukan"}
             </div>
-
           </div>
 
           {/* ============================================================= */}
@@ -350,7 +378,8 @@ export default function OrderDetailsPage() {
           {/* ============================================================= */}
           {isPendingPayment && (
             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-700 text-center mt-6">
-              💰 Pesanan siap dibayar: **Rp{order.total_biaya_final?.toLocaleString('id-ID') || 0},-**
+              💰 Pesanan siap dibayar: **Rp
+              {order.total_biaya_final?.toLocaleString("id-ID") || 0},-**
               <div className="mt-3">
                 <Button
                   onClick={handleSnapPay}
@@ -361,11 +390,12 @@ export default function OrderDetailsPage() {
               </div>
             </div>
           )}
-          
+
           {/* Payment Section (Jika sudah Paid) */}
           {order.status_pembayaran === "Paid" && (
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-700 text-center mt-6">
-              ✅ Pembayaran **LUNAS** sebesar Rp{order.total_biaya_final?.toLocaleString('id-ID') || 0},-
+              ✅ Pembayaran **LUNAS** sebesar Rp
+              {order.total_biaya_final?.toLocaleString("id-ID") || 0},-
             </div>
           )}
 
@@ -378,7 +408,10 @@ export default function OrderDetailsPage() {
               <p className="text-gray-500 text-sm">Belum ada riwayat</p>
             ) : (
               timeline.map((item) => {
-                const info = STATUS_INFO[item.status] || { emoji: '❓', desc: 'Detail status tidak tersedia.' };
+                const info = STATUS_INFO[item.status] || {
+                  emoji: "❓",
+                  desc: "Detail status tidak tersedia.",
+                };
                 return (
                   <div
                     key={item.id_riwayat} // Gunakan id_riwayat sebagai key jika tersedia
@@ -389,12 +422,14 @@ export default function OrderDetailsPage() {
                       <span className="text-blue-700 font-medium">
                         {item.status}
                       </span>
-                      <span className="text-gray-600 text-sm">
-                        {info.desc}
-                      </span>
+                      <span className="text-gray-600 text-sm">{info.desc}</span>
                       <span className="text-gray-500 text-xs mt-1">
                         {new Date(item.waktu).toLocaleString("id-ID", {
-                          hour: "2-digit", minute: "2-digit", day: "numeric", month: "short", year: "numeric",
+                          hour: "2-digit",
+                          minute: "2-digit",
+                          day: "numeric",
+                          month: "short",
+                          year: "numeric",
                         })}
                       </span>
                     </div>

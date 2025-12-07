@@ -67,15 +67,15 @@ const ORDER_SUBSTEPS = [
 const getSuperStatus = (subStatus) => {
   // Status Akhir
   if (subStatus === "Selesai") return "Done";
-  
+
   // Status Pembatalan
   if (subStatus === "Dibatalkan") return "Cancelled"; // Menggunakan 'Cancelled' untuk konsistensi
 
   // Status Operasional (Sedang Dikerjakan)
   if (
     [
-      "Penjemputan", 
-      "Verifikasi Berat", 
+      "Penjemputan",
+      "Verifikasi Berat",
       "Sedang Dicuci",
       "Sedang Disetrika",
       "Selesai Dicuci",
@@ -86,33 +86,99 @@ const getSuperStatus = (subStatus) => {
   }
 
   // Status Menunggu (Awal/Pembayaran)
-  if (
-    [
-      "Pesanan Dibuat",
-      "Menunggu Pembayaran",
-    ].includes(subStatus)
-  ) {
+  if (["Pesanan Dibuat", "Menunggu Pembayaran"].includes(subStatus)) {
     return "Pending"; // Diperbaiki: Mengembalikan "Pending" agar cocok dengan switch case
   }
-  
+
   // Kasus fallback jika status tidak dikenal
-  return "Unknown Status"; 
+  return "Unknown Status";
 };
 
 const getStepColor = (subStatus) => {
-    const superStatus = getSuperStatus(subStatus);
-    switch (superStatus) {
-      case "Pending": 
-        return "bg-yellow-100 border-yellow-300 text-yellow-700";
-      case "In Progress":
-        return "bg-purple-100 border-purple-300 text-purple-700";
-      case "Done":
-        return "bg-green-100 border-green-300 text-green-700";
-      case "Cancelled": //  penanganan untuk status dibatalkan
-        return "bg-red-100 border-red-300 text-red-700";
-      default:
-        return "bg-gray-100 border-gray-200 text-gray-700";
+  const superStatus = getSuperStatus(subStatus);
+  switch (superStatus) {
+    case "Pending":
+      return "bg-yellow-100 border-yellow-300 text-yellow-700";
+    case "In Progress":
+      return "bg-purple-100 border-purple-300 text-purple-700";
+    case "Done":
+      return "bg-green-100 border-green-300 text-green-700";
+    case "Cancelled": //  penanganan untuk status dibatalkan
+      return "bg-red-100 border-red-300 text-red-700";
+    default:
+      return "bg-gray-100 border-gray-200 text-gray-700";
+  }
+};
+
+// Fungsi Helper untuk Notifikasi
+const insertNotification = async (order, statusLabel) => {
+  // Pastikan order dan ID Pelanggan tersedia
+  if (!order || !order.id_pelanggan || !order.id_pesanan) {
+    console.warn(
+      "Skip notifikasi: Order, ID pelanggan, atau ID pesanan tidak tersedia.",
+    );
+    return;
+  }
+
+  // Format ID Pesanan agar mudah dibaca
+  const orderId = `#${order.id_pesanan}`;
+
+  // Definisikan Konten Notifikasi
+  let notificationData = null;
+  let finalTotal = order.total_biaya_final || 0;
+
+  switch (statusLabel) {
+    case "Penjemputan":
+      notificationData = {
+        tipe: "PICKUP",
+        konten: `Pesanan ${orderId}: Kurir kami sedang dalam perjalanan menuju lokasi Anda untuk penjemputan.`,
+      };
+      break;
+    case "Menunggu Pembayaran":
+      notificationData = {
+        tipe: "PAYMENT_DUE",
+        konten: `Tagihan Baru untuk Pesanan ${orderId}! Pesanan sudah diverifikasi, mohon segera lakukan pembayaran sebesar Rp${finalTotal.toLocaleString("id-ID")},-`,
+      };
+      break;
+    case "Selesai Dicuci":
+      notificationData = {
+        tipe: "READY_FOR_DELIVERY",
+        konten: `Pesanan ${orderId}: Pakaian Anda sudah selesai! Siap diantar kembali ke lokasi Anda.`,
+      };
+      break;
+    case "Sedang Diantar":
+      notificationData = {
+        tipe: "DELIVERY",
+        konten: `Pesanan ${orderId}: Kurir sedang mengantar pesanan Anda. Mohon bersiap menerima.`,
+      };
+      break;
+    case "Selesai":
+      notificationData = {
+        tipe: "ORDER_COMPLETE",
+        konten: `Pesanan ${orderId}: Selesai! Terima kasih telah menggunakan jasa kami.`,
+      };
+      break;
+    case "Dibatalkan":
+      notificationData = {
+        tipe: "CANCELLED",
+        konten: `Pesanan ${orderId}: Dibatalkan oleh Admin. Mohon hubungi layanan pelanggan untuk info lebih lanjut.`,
+      };
+      break;
+    default:
+      return;
+  }
+
+  if (notificationData) {
+    const { error: notifErr } = await supabase.from("notifikasi").insert({
+      id_user: order.id_pelanggan,
+      id_pesanan: order.id_pesanan,
+      tipe: notificationData.tipe,
+      konten: notificationData.konten,
+    });
+    if (notifErr) {
+      console.error("⚠️ Gagal insert notifikasi:", notifErr);
     }
+  }
 };
 
 export default function OrderDetailPage() {
@@ -166,25 +232,34 @@ export default function OrderDetailPage() {
   }, [orderId]);
 
   const handleStepClick = async (clickedStep) => {
-    if (!order) return;
+    if (!order) {
+      console.error("Order data is not loaded.");
+      return;
+    }
 
+    // 1. Persiapan Data & Indeks
     const existingStatuses =
       order.riwayat_status_pesanan?.map((s) => s.status) || [];
     const clickedIndex = ORDER_SUBSTEPS.findIndex(
       (s) => s.label === clickedStep.label,
     );
 
-    // cari index terakhir yang ada di DB
+    // Cari index terakhir yang ada di DB (mengambil langkah terjauh yang sudah dicapai)
     const currentIndexInDB = Math.max(
       ...existingStatuses.map((s) =>
         ORDER_SUBSTEPS.findIndex((step) => step.label === s),
       ),
-      -1,
+      -1, // Jika belum ada status sama sekali, mulai dari -1
     );
 
     try {
+      let finalUpdatedStatus = null;
+      let isStatusChanged = false;
+
       if (clickedIndex > currentIndexInDB) {
-        // FORWARD: insert semua step yang belum ada
+        // ===========================================
+        // LOGIKA FORWARD (MAJU)
+        // ===========================================
         const stepsToInsert = ORDER_SUBSTEPS.slice(
           currentIndexInDB + 1,
           clickedIndex + 1,
@@ -201,12 +276,19 @@ export default function OrderDetailPage() {
             .from("riwayat_status_pesanan")
             .insert(inserts);
           if (insertError) throw insertError;
+
+          // Status yang baru saja dicapai
+          finalUpdatedStatus = stepsToInsert[stepsToInsert.length - 1].label;
+          isStatusChanged = true;
         }
       } else if (clickedIndex < currentIndexInDB) {
-        // BACKWARD: hapus semua step yang lebih tinggi dari step yang diklik
+        // ===========================================
+        // LOGIKA BACKWARD (MUNDUR)
+        // ===========================================
         const stepsToDelete = ORDER_SUBSTEPS.slice(clickedIndex + 1).map(
           (s) => s.label,
         );
+
         if (stepsToDelete.length > 0) {
           const { error: deleteError } = await supabase
             .from("riwayat_status_pesanan")
@@ -214,36 +296,51 @@ export default function OrderDetailPage() {
             .in("status", stepsToDelete)
             .eq("id_pesanan", order.id_pesanan);
           if (deleteError) throw deleteError;
+          isStatusChanged = true;
         }
+        // Status tujuan saat mundur
+        finalUpdatedStatus = clickedStep.label;
+      } else if (clickedIndex === currentIndexInDB) {
+        // Jika klik status yang sudah aktif, tidak perlu update, tapi set status untuk notifikasi
+        finalUpdatedStatus = clickedStep.label;
       }
 
-      // Update super status di tabel pesanan
-      const superStatus = getSuperStatus(clickedStep.label);
+      // 2. Update status_pesanan di tabel pesanan (Super Status)
+      // Note: Update ini akan dijalankan bahkan jika tidak ada insert/delete (misal, hanya mengklik status yang sudah dicapai)
+      const newSuperStatus = getSuperStatus(clickedStep.label);
       const { error: pesananError } = await supabase
         .from("pesanan")
-        .update({ status_pesanan: superStatus })
+        // Penting: Update status_pesanan dengan sub-status yang diklik
+        .update({ status_pesanan: clickedStep.label })
         .eq("id_pesanan", order.id_pesanan);
       if (pesananError) throw pesananError;
 
-      // update state lokal
-      const updatedStatuses = await supabase
+      // 3. 🔔 INSERT NOTIFIKASI
+      // Panggil fungsi helper untuk insert notifikasi jika ada perubahan status yang signifikan
+      if (finalUpdatedStatus) {
+        await insertNotification(order, finalUpdatedStatus);
+      }
+
+      // 4. Update State Lokal (Fetch Ulang Data Riwayat)
+      const { data: updatedStatuses, error: fetchError } = await supabase
         .from("riwayat_status_pesanan")
         .select("*")
         .eq("id_pesanan", order.id_pesanan)
         .order("waktu", { ascending: true });
 
+      if (fetchError) throw fetchError;
+
       setOrder({
         ...order,
-        status_pesanan: superStatus,
-        riwayat_status_pesanan: updatedStatuses.data || [],
-        latestStatus:
-          updatedStatuses.data?.[updatedStatuses.data.length - 1] || null,
+        status_pesanan: clickedStep.label, // Set state lokal ke sub-status yang baru
+        riwayat_status_pesanan: updatedStatuses || [],
+        latestStatus: updatedStatuses?.[updatedStatuses.length - 1] || null,
       });
 
-      alert("Status pesanan berhasil diupdate!");
+      alert(`Status pesanan berhasil diupdate ke: ${clickedStep.label}!`);
     } catch (err) {
-      console.error(err);
-      alert("Gagal update status pesanan");
+      console.error("Gagal memproses status pesanan:", err);
+      alert("Gagal update status pesanan. Lihat console untuk detail.");
     }
   };
 
@@ -253,7 +350,7 @@ export default function OrderDetailPage() {
       <StaffDashboardLayout>
         <div className="p-6 text-center text-red-600">{error}</div>;
       </StaffDashboardLayout>
-    )
+    );
   }
   if (!order)
     return (
@@ -264,8 +361,11 @@ export default function OrderDetailPage() {
   //   (s) => s.label === (order.latestStatus?.status || "Pesanan Baru"),
   // );
 
-  const currentSubIndex = order.riwayat_status_pesanan.length == 0 ? 0 : order.riwayat_status_pesanan.length - 1;
-  
+  const currentSubIndex =
+    order.riwayat_status_pesanan.length == 0
+      ? 0
+      : order.riwayat_status_pesanan.length - 1;
+
   // Helper: warna badge berdasarkan super status
 
   return (
