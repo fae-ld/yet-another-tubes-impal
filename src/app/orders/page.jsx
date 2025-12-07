@@ -31,6 +31,7 @@ const getSuperStatus = (subStatus) => {
       "Sedang Disetrika",
       "Selesai Dicuci",
       "Sedang Diantar",
+      "In Progress",
     ].includes(subStatus)
   ) {
     return "In Progress";

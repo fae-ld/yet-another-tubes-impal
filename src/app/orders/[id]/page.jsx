@@ -71,6 +71,7 @@ const getSuperStatus = (subStatus) => {
       "Sedang Disetrika",
       "Selesai Dicuci",
       "Sedang Diantar",
+      "In Progress",
     ].includes(subStatus)
   ) {
     return "In Progress";
@@ -219,7 +220,7 @@ export default function OrderDetailsPage() {
             .update({
               // Status Pesanan & Pembayaran
               status_pembayaran: "Paid",
-              status_pesanan: "Sedang Dicuci", // Pindah ke tahap operasional
+              status_pesanan: "In Progress",
 
               // 🆕 Detail Pembayaran (Dipindahkan dari tabel pembayaran)
               metode_pembayaran: paymentType,
