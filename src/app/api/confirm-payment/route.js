@@ -20,21 +20,10 @@ export async function POST(req) {
       .from("pesanan")
       .update({
         status_pembayaran: "Paid",
-        status_pesanan: "Pesanan Baru",
+        status_pesanan: "In Progress",
       })
       .eq("id_pesanan", orderId);
     if (orderErr) throw orderErr;
-
-    // ✅ Tambahkan riwayat pesanan
-    const { error: historyErr } = await supabase
-      .from("riwayat_status_pesanan")
-      .insert({
-        id_pesanan: orderId,
-        status: "Pesanan Baru",
-        deskripsi: "Pesanan dikonfirmasi setelah pembayaran berhasil.",
-        waktu: new Date().toISOString(),
-      });
-    if (historyErr) throw historyErr;
 
     return NextResponse.json({ success: true });
   } catch (err) {

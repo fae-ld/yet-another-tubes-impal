@@ -90,7 +90,6 @@ export default function OrderDetailsPage() {
   const [order, setOrder] = useState(null);
   const [timeline, setTimeline] = useState([]);
   const [loadingPage, setLoadingPage] = useState(true);
-  const [paymentData, setPaymentData] = useState({});
   const [existingReview, setExistingReview] = useState(null);
 
   // Fetch data pesanan & timeline
@@ -128,15 +127,6 @@ export default function OrderDetailsPage() {
 
         if (riwayatError) throw riwayatError;
         setTimeline(riwayat || []);
-
-        const { data: pembayaran, error: pembayaranError } = await supabase
-          .from("pembayaran")
-          .select("*")
-          .eq("id_pesanan", pesanan.id_pesanan)
-          .maybeSingle();
-
-        if (pembayaranError) throw pembayaranError;
-        setPaymentData(pembayaran);
 
         if (pesanan?.id_pesanan) {
           const { data: ulasan, error: ulasanError } = await supabase
@@ -178,8 +168,7 @@ export default function OrderDetailsPage() {
 
   const isPendingPayment =
     timeline.map((t) => t.status).includes("Menunggu Pembayaran") &&
-    timeline.length == 4 &&
-    paymentData === null;
+    timeline.length == 4;
 
   const handleSnapPay = async () => {
     // Pastikan status_pesanan saat ini adalah "Menunggu Pembayaran"
@@ -218,34 +207,31 @@ export default function OrderDetailsPage() {
         onSuccess: async (result) => {
           console.log("✅ Payment success:", result);
 
-          // Update status pembayaran & status pesanan di tabel pesanan
-          // STATUS PESANAN DIUBAH KE "Sedang Dicuci" setelah pembayaran lunas
+          // --- Variabel Baru ---
+          const paymentType = "QRIS";
+          const transactionRef =
+            result.transaction_id || result.transaction_status; // Gunakan ID transaksi Midtrans
+          // ---------------------
+
+          // 1. UPDATE status_pembayaran, status_pesanan, DAN DETAIL PEMBAYARAN di tabel pesanan
           const { error: payErr } = await supabase
             .from("pesanan")
             .update({
+              // Status Pesanan & Pembayaran
               status_pembayaran: "Paid",
-              status_pesanan: "Sedang Dicuci", // Pindah ke tahap operasional selanjutnya
+              status_pesanan: "Sedang Dicuci", // Pindah ke tahap operasional
+
+              // 🆕 Detail Pembayaran (Dipindahkan dari tabel pembayaran)
+              metode_pembayaran: paymentType,
+              jumlah_dibayar: order.total_biaya_final,
+              tgl_pembayaran_lunas: new Date().toISOString(),
+              referensi_pembayaran: transactionRef,
             })
             .eq("id_pesanan", order.id_pesanan);
 
           if (payErr) console.error("⚠️ Gagal update pesanan:", payErr);
 
-          // Insert data ke tabel pembayaran (TETAP SAMA)
-          const { error: insertErr } = await supabase
-            .from("pembayaran")
-            .insert([
-              {
-                id_pesanan: order.id_pesanan,
-                metode: result.payment_type || "QRIS",
-                jumlah: order.total_biaya_final,
-                tgl_pembayaran: new Date().toISOString(),
-              },
-            ]);
-
-          if (insertErr) console.error("⚠️ Gagal insert pembayaran:", insertErr);
-
-          // Tambahkan ke tabel riwayat_status_pesanan
-          // Status yang diinsert adalah "Sedang Dicuci"
+          // 2. Tambahkan ke tabel riwayat_status_pesanan (TETAP SAMA)
           const { error: histErr } = await supabase
             .from("riwayat_status_pesanan")
             .insert([
@@ -260,16 +246,26 @@ export default function OrderDetailsPage() {
 
           if (histErr) console.error("⚠️ Gagal insert riwayat:", histErr);
 
-          // (Opsional) kirim ke backend endpoint (TETAP SAMA)
+          // 3. (Opsional) kirim ke backend endpoint (Disesuaikan dengan kolom baru)
           await fetch("/api/confirm-payment", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
               orderId: order.id_pesanan,
               gross_amount: order.total_biaya_final,
-              payment_method: result.payment_type || "QRIS",
+              payment_method: paymentType, // Gunakan paymentType yang didapat dari Midtrans
             }),
           }).catch((err) => console.warn("⚠️ Backend confirm skipped:", err));
+
+          // 4. Notifikasi ke pelanggan: Pesanan sudah mulai diproses
+          // Anda bisa memanggil insertNotification di sini jika Anda membuatnya sebagai fungsi global/helper
+          await insertNotification(
+            {
+              id_pesanan: order.id_pesanan,
+              id_pelanggan: order.id_pelanggan,
+            },
+            "Sedang Dicuci",
+          );
 
           // Refresh halaman biar data baru muncul
           window.location.reload();
@@ -277,8 +273,6 @@ export default function OrderDetailsPage() {
 
         onPending: (result) => {
           console.log("🕒 Pembayaran pending:", result);
-          // Opsional: update status_pembayaran di DB menjadi "Pending Midtrans"
-          // untuk membedakan dari "Pending" yang berarti belum diverifikasi/ditentukan harga.
         },
 
         onError: (result) => {
