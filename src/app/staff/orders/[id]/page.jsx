@@ -191,6 +191,7 @@ export default function OrderDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [existingReview, setExistingReview] = useState(null);
+  const [service, setService] = useState(null);
 
   useEffect(() => {
     if (!orderId) return;
@@ -204,6 +205,17 @@ export default function OrderDetailPage() {
           .eq("id_pesanan", orderId)
           .single();
         if (orderError) throw orderError;
+
+        if (orderData) {
+          const { data: serviceData, error: serviceError } = await supabase
+            .from("layanan")
+            .select("*")
+            .eq("jenis_layanan", orderData.jenis_layanan)
+            .single();
+          if (serviceError) throw serviceError;
+
+          setService(serviceData);
+        }
 
         const { data: pelangganData, error: pelangganError } = await supabase
           .from("pelanggan")
@@ -236,8 +248,6 @@ export default function OrderDetailPage() {
           // Abaikan error 'data tidak ditemukan' (PGRST116)
           throw ulasanError;
         }
-
-        console.log(ulasan, ulasanError);
         // Set state ulasan (akan null jika tidak ditemukan)
         setExistingReview(ulasan);
       } catch (err) {
@@ -447,6 +457,12 @@ export default function OrderDetailPage() {
                 </span>
               </div>
               <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">Harga</span>
+                <span className="text-gray-800 font-semibold">
+                  {`Rp. ${service?.harga_per_kg} / kg` ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between">
                 <span className="text-gray-600 font-medium">
                   Estimasi Berat
                 </span>
@@ -466,7 +482,7 @@ export default function OrderDetailPage() {
                   value={order.berat_aktual ?? ""}
                   onChange={(e) => {
                     const berat = parseFloat(e.target.value);
-                    const hargaPerKg = 5000; // asumsi harga per kg
+                    const hargaPerKg = service?.harga_per_kg;
                     setOrder({
                       ...order,
                       berat_aktual: berat,
