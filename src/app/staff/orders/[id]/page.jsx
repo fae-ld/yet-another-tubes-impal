@@ -5,6 +5,7 @@ import { useRouter, useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { ArrowLeft } from "lucide-react";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
+import ReviewCard from "@/components/ReviewCard";
 
 const ORDER_SUBSTEPS = [
   // ... (Array ini sudah benar dan tidak diubah) ...
@@ -189,6 +190,7 @@ export default function OrderDetailPage() {
   const [order, setOrder] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [existingReview, setExistingReview] = useState(null);
 
   useEffect(() => {
     if (!orderId) return;
@@ -223,6 +225,21 @@ export default function OrderDetailPage() {
           riwayat_status_pesanan: statusData,
           latestStatus: statusData?.[0] || null,
         });
+
+        const { data: ulasan, error: ulasanError } = await supabase
+          .from("ulasan")
+          .select("*")
+          .eq("id_pesanan", orderId)
+          .single(); // Karena diasumsikan 1 pesanan hanya 1 ulasan
+
+        if (ulasanError && ulasanError.code !== "PGRST116") {
+          // Abaikan error 'data tidak ditemukan' (PGRST116)
+          throw ulasanError;
+        }
+
+        console.log(ulasan, ulasanError);
+        // Set state ulasan (akan null jika tidak ditemukan)
+        setExistingReview(ulasan);
       } catch (err) {
         console.error(err);
         setError("Gagal mengambil data");
@@ -526,6 +543,24 @@ export default function OrderDetailPage() {
             </div>
           </div>
         </div>
+
+        {existingReview && (
+          <div className="mt-3">
+            <ReviewCard
+              review={{
+                ...existingReview,
+                pelanggan_nama: order.pelanggan?.nama, // Tampilkan nama pengguna
+              }}
+              variant="default"
+            />
+          </div>
+        )}
+
+        {!existingReview && (
+          <div className="mt-3 text-center text-gray-500 bold bg-white p-5 rounded-l border shadow-2xl">
+            Belum ada ulasan ╰(*°▽°*)╯
+          </div>
+        )}
 
         {/* Checklist Status Pesanan */}
         <div className="bg-white p-6 rounded-2xl shadow-2xl border border-gray-100 space-y-4">
