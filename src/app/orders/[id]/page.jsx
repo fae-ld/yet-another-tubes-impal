@@ -247,15 +247,15 @@ export default function OrderDetailsPage() {
           if (histErr) console.error("⚠️ Gagal insert riwayat:", histErr);
 
           // 3. (Opsional) kirim ke backend endpoint (Disesuaikan dengan kolom baru)
-          await fetch("/api/confirm-payment", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              orderId: order.id_pesanan,
-              gross_amount: order.total_biaya_final,
-              payment_method: paymentType, // Gunakan paymentType yang didapat dari Midtrans
-            }),
-          }).catch((err) => console.warn("⚠️ Backend confirm skipped:", err));
+          // await fetch("/api/confirm-payment", {
+          //   method: "POST",
+          //   headers: { "Content-Type": "application/json" },
+          //   body: JSON.stringify({
+          //     orderId: order.id_pesanan,
+          //     gross_amount: order.total_biaya_final,
+          //     payment_method: paymentType, // Gunakan paymentType yang didapat dari Midtrans
+          //   }),
+          // }).catch((err) => console.warn("⚠️ Backend confirm skipped:", err));
 
           // 4. Notifikasi ke pelanggan: Pesanan sudah mulai diproses
           // Anda bisa memanggil insertNotification di sini jika Anda membuatnya sebagai fungsi global/helper
