@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
 import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
+import ReviewForm from "@/components/ReviewForm";
+import ReviewCard from "@/components/ReviewCard";
 
 // =========================================================
 // KONSTANTA STATUS BARU
@@ -89,6 +91,7 @@ export default function OrderDetailsPage() {
   const [timeline, setTimeline] = useState([]);
   const [loadingPage, setLoadingPage] = useState(true);
   const [paymentData, setPaymentData] = useState({});
+  const [existingReview, setExistingReview] = useState(null);
 
   // Fetch data pesanan & timeline
   useEffect(() => {
@@ -134,6 +137,21 @@ export default function OrderDetailsPage() {
 
         if (pembayaranError) throw pembayaranError;
         setPaymentData(pembayaran);
+
+        if (pesanan?.id_pesanan) {
+          const { data: ulasan, error: ulasanError } = await supabase
+            .from("ulasan")
+            .select("*")
+            .eq("id_pesanan", pesanan.id_pesanan)
+            .single(); // Karena diasumsikan 1 pesanan hanya 1 ulasan
+
+          if (ulasanError && ulasanError.code !== "PGRST116") {
+            // Abaikan error 'data tidak ditemukan' (PGRST116)
+            throw ulasanError;
+          }
+          // Set state ulasan (akan null jika tidak ditemukan)
+          setExistingReview(ulasan);
+        }
       } catch (err) {
         console.error("Gagal fetch data:", err);
       } finally {
@@ -398,6 +416,49 @@ export default function OrderDetailsPage() {
               {order.total_biaya_final?.toLocaleString("id-ID") || 0},-
             </div>
           )}
+
+          {/* Review Form */}
+          {/* Kondisi 1: Pesanan Selesai dan Belum Ada Ulasan */}
+          {order.status_pesanan === "Selesai" &&
+            currentSubStatus == "Done" &&
+            superStatus == "Selesai" &&
+            !existingReview && (
+              <div className="mt-3">
+                <ReviewForm
+                  orderId={order.id_pesanan}
+                  onReviewSubmitted={() => {
+                    // Setelah ulasan dikirim, lakukan fetch ulang data ulasan
+                    // Idealnya, Anda memanggil fetchOrder() lagi, tapi untuk simplicity, kita reload.
+                    alert("Ulasan terkirim. Memuat ulang halaman...");
+                    window.location.reload();
+                  }}
+                />
+              </div>
+            )}
+
+          {/* Kondisi 2: Pesanan Selesai dan Sudah Ada Ulasan */}
+          {order.status_pesanan === "Selesai" &&
+            currentSubStatus == "Done" &&
+            superStatus == "Selesai" &&
+            existingReview && (
+              // Asumsi Anda telah mengimpor ReviewCard
+              <div className="mt-3">
+                <ReviewCard
+                  review={{
+                    ...existingReview,
+                    pelanggan_nama: user.user_metadata?.full_name || "Anda", // Tampilkan nama pengguna
+                  }}
+                  variant="default"
+                />
+              </div>
+            )}
+
+          {/* Kondisi 3: Pesanan Belum Selesai */}
+          {/* {order.status_pesanan !== "Selesai" && (
+            <p className="text-gray-500 p-3 bg-gray-50 rounded-lg text-sm">
+              Form ulasan akan tersedia setelah pesanan berstatus **Selesai**.
+            </p>
+          )} */}
 
           {/* Timeline */}
           <div className="mt-6 space-y-4">
