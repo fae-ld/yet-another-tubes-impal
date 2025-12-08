@@ -34,10 +34,13 @@ export default function OrdersTable({ orders }) {
                 Jenis
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-purple-700">
-                Estimasi
+                Estimasi (kg)
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-purple-700">
-                Berat
+                Aktual (kg)
+              </th>
+              <th className="px-4 py-3 text-right text-sm font-medium text-purple-700">
+                Metode
               </th>
               <th className="px-4 py-3 text-right text-sm font-medium text-purple-700">
                 Total (Rp)
