@@ -83,36 +83,6 @@ const getSuperStatus = (subStatus) => {
   return "Pending";
 };
 
-const getStatusColor = (superStatus) => {
-  switch (superStatus) {
-    case "Pending":
-      return "text-yellow-600 bg-yellow-100";
-    case "In Progress":
-      return "text-blue-600 bg-blue-100";
-    case "Done":
-      return "text-green-600 bg-green-100";
-    case "Batal":
-      return "text-red-600 bg-red-100";
-    default:
-      return "text-gray-600 bg-gray-100";
-  }
-};
-
-const getStatusIcon = (superStatus) => {
-  switch (superStatus) {
-    case "Pending":
-      return <Clock size={20} className="text-yellow-500" />;
-    case "In Progress":
-      return <Loader2 size={20} className="text-blue-500 animate-spin" />;
-    case "Done":
-      return <CheckCircle size={20} className="text-green-500" />;
-    case "Batal":
-      return <XCircle size={20} className="text-red-500" />;
-    default:
-      return null;
-  }
-};
-
 export default function OrderDetailsPage() {
   const { id } = useParams();
   const router = useRouter();
@@ -197,22 +167,9 @@ export default function OrderDetailsPage() {
     }
   }, []);
 
-  //   Helper vars
-  const isPrepaid = order?.metode_pembayaran === "QRIS";
-
-  const currentSubStatus = order?.status_pesanan || "";
-  const superStatus = getSuperStatus(currentSubStatus);
-
-  const shouldShowSnapButton =
-    isPrepaid && // Hanya untuk prepaid
-    currentSubStatus === "Menunggu Pembayaran" && // Hanya saat status ini
-    order?.status_pembayaran !== "Paid";
-
   const isPendingPayment =
     timeline.map((t) => t.status).includes("Menunggu Pembayaran") &&
     timeline.length == 4;
-
-  const shouldShowCODInfo = !isPrepaid && order?.status_pembayaran !== "Paid";
 
   const handleSnapPay = async () => {
     // Pastikan status_pesanan saat ini adalah "Menunggu Pembayaran"
@@ -354,6 +311,42 @@ export default function OrderDetailsPage() {
     );
   }
 
+  // =========================================================
+  // LOGIKA TAMPILAN (DISESUAIKAN UNTUK SUPER STATUS)
+  // =========================================================
+  const currentSubStatus = order.status_pesanan || "";
+  const superStatus = getSuperStatus(currentSubStatus);
+
+  const getStatusColor = (superStatus) => {
+    switch (superStatus) {
+      case "Pending":
+        return "text-yellow-600 bg-yellow-100";
+      case "In Progress":
+        return "text-blue-600 bg-blue-100";
+      case "Done":
+        return "text-green-600 bg-green-100";
+      case "Batal":
+        return "text-red-600 bg-red-100";
+      default:
+        return "text-gray-600 bg-gray-100";
+    }
+  };
+
+  const getStatusIcon = (superStatus) => {
+    switch (superStatus) {
+      case "Pending":
+        return <Clock size={20} className="text-yellow-500" />;
+      case "In Progress":
+        return <Loader2 size={20} className="text-blue-500 animate-spin" />;
+      case "Done":
+        return <CheckCircle size={20} className="text-green-500" />;
+      case "Batal":
+        return <XCircle size={20} className="text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="min-h-screen p-6 flex flex-col items-center">
@@ -396,7 +389,7 @@ export default function OrderDetailsPage() {
           {/* ============================================================= */}
           {/* PAYMENT SECTION: IF STATUS MENUNGGU PEMBAYARAN, TAMPILKAN SNAP */}
           {/* ============================================================= */}
-          {isPendingPayment && shouldShowSnapButton && (
+          {isPendingPayment && (
             <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg text-yellow-700 text-center mt-6">
               💰 Pesanan siap dibayar: **Rp
               {order.total_biaya_final?.toLocaleString("id-ID") || 0},-**
@@ -411,38 +404,17 @@ export default function OrderDetailsPage() {
             </div>
           )}
 
-          {shouldShowCODInfo && (
-            <div className="bg-blue-50 border border-blue-200 p-4 rounded-lg text-blue-700 text-center mt-6">
-              🛵 Metode Pembayaran: **Bayar di Tempat (COD)**{" "}
-              <p className="text-sm mt-1">
-                Pembayaran sebesar Rp{" "}
-                {order.total_biaya_final?.toLocaleString("id-ID") || 0},- akan
-                dilakukan tunai saat pakaian diantar kembali.
-              </p>{" "}
-            </div>
-          )}
-
-          {/* Payment Section (Jika sudah Paid, baik Prepaid maupun COD) */}
-          {order?.status_pembayaran === "Paid" && (
+          {/* Payment Section (Jika sudah Paid) */}
+          {order.status_pembayaran === "Paid" && (
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-700 text-center mt-6">
-                  ✅ Pembayaran **LUNAS** sebesar Rp{" "}
-              {order.total_biaya_final?.toLocaleString("id-ID") || 0},-    {" "}
-              {order.metode_pembayaran_initial && (
-                <span className="text-sm block mt-1">
-                  (
-                  {order.metode_pembayaran_initial === "COD"
-                    ? "Tunai (COD)"
-                    : "Prepaid"}
-                  )
-                </span>
-              )}
-               {" "}
+              ✅ Pembayaran **LUNAS** sebesar Rp
+              {order.total_biaya_final?.toLocaleString("id-ID") || 0},-
             </div>
           )}
 
           {/* Review Form */}
           {/* Kondisi 1: Pesanan Selesai dan Belum Ada Ulasan */}
-          {order?.status_pesanan === "Selesai" &&
+          {order.status_pesanan === "Selesai" &&
             currentSubStatus == "Selesai" &&
             superStatus == "Done" &&
             !existingReview && (
@@ -460,7 +432,7 @@ export default function OrderDetailsPage() {
             )}
 
           {/* Kondisi 2: Pesanan Selesai dan Sudah Ada Ulasan */}
-          {order?.status_pesanan === "Selesai" &&
+          {order.status_pesanan === "Selesai" &&
             currentSubStatus == "Selesai" &&
             superStatus == "Done" &&
             existingReview && (
@@ -477,13 +449,11 @@ export default function OrderDetailsPage() {
             )}
 
           {/* Kondisi 3: Pesanan Belum Selesai */}
-          {/* {order?.status_pesanan !== "Selesai" && (
+          {/* {order.status_pesanan !== "Selesai" && (
             <p className="text-gray-500 p-3 bg-gray-50 rounded-lg text-sm">
               Form ulasan akan tersedia setelah pesanan berstatus **Selesai**.
             </p>
           )} */}
-
-          <p className="text-center mt-3 mb-1">{order?.metode_pembayaran}</p>
 
           {/* Timeline */}
           <div className="mt-6 space-y-4">

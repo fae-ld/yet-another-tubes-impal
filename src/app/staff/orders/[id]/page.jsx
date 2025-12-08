@@ -282,6 +282,8 @@ export default function OrderDetailPage() {
       -1, // Jika belum ada status sama sekali, mulai dari -1
     );
 
+    const isCOD = order.metode_pembayaran === "COD";
+
     try {
       let finalUpdatedStatus = null;
       let isStatusChanged = false;
@@ -290,10 +292,35 @@ export default function OrderDetailPage() {
         // ===========================================
         // LOGIKA FORWARD (MAJU)
         // ===========================================
-        const stepsToInsert = ORDER_SUBSTEPS.slice(
+        let stepsToInsert = ORDER_SUBSTEPS.slice(
           currentIndexInDB + 1,
           clickedIndex + 1,
         ).filter((step) => !existingStatuses.includes(step.label));
+
+        // 1. Untuk Prepaid/QRIS (default): Pastikan pembayaran sudah lunas sebelum ke "Sedang Dicuci"
+        if (!isCOD && order.status_pembayaran !== "Paid") {
+          // Jika belum lunas, batasi status maksimal hingga Menunggu Pembayaran (Step 4)
+          const waitingForPaymentIndex = ORDER_SUBSTEPS.findIndex(
+            (s) => s.label === "Menunggu Pembayaran",
+          );
+
+          if (
+            clickedIndex > waitingForPaymentIndex &&
+            currentIndexInDB < waitingForPaymentIndex
+          ) {
+            alert(
+              "Pembayaran belum lunas. Status tidak dapat dimajukan melewati 'Menunggu Pembayaran'.",
+            );
+            return; // Hentikan proses update
+          }
+        }
+
+        // 2. Untuk COD: Hilangkan status "Menunggu Pembayaran" (Step 4) dari list stepsToInsert
+        if (isCOD) {
+          stepsToInsert = stepsToInsert.filter(
+            (step) => step.label !== "Menunggu Pembayaran",
+          );
+        }
 
         if (stepsToInsert.length > 0) {
           const inserts = stepsToInsert.map((step) => ({
@@ -337,11 +364,20 @@ export default function OrderDetailPage() {
 
       // 2. Update status_pesanan di tabel pesanan (Super Status)
       // Note: Update ini akan dijalankan bahkan jika tidak ada insert/delete (misal, hanya mengklik status yang sudah dicapai)
-      const newSuperStatus = getSuperStatus(clickedStep.label);
+      const updatePayload = {
+        status_pesanan: clickedStep.label,
+      };
+
+      if (isCOD && clickedStep.label === "Selesai") {
+        // Tambahkan update status pembayaran ke Paid jika ini COD dan statusnya "Selesai"
+        updatePayload.status_pembayaran = "Paid";
+        updatePayload.tgl_pembayaran_lunas = new Date().toISOString();
+        updatePayload.jumlah_dibayar = order.total_biaya_final;
+        updatePayload.metode_pembayaran = "COD";
+      }
       const { error: pesananError } = await supabase
         .from("pesanan")
-        // Penting: Update status_pesanan dengan sub-status yang diklik
-        .update({ status_pesanan: clickedStep.label })
+        .update(updatePayload) // Gunakan payload dinamis
         .eq("id_pesanan", order.id_pesanan);
       if (pesananError) throw pesananError;
 
@@ -513,6 +549,73 @@ export default function OrderDetailPage() {
                   {order.status_pembayaran ?? "-"}
                 </span>
               </div>
+
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">
+                  Metode Pembayaran
+                </span>
+                <span className="text-gray-800 font-semibold">
+                  {order.metode_pembayaran ?? "-"}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-gray-600 font-medium">
+                  Status Pembayaran
+                </span>
+                <span
+                  className={`font-semibold ${order.status_pembayaran === "Paid" ? "text-green-600" : "text-red-600"}`}
+                >
+                  {order.status_pembayaran ?? "Unpaid"}
+                </span>
+              </div>
+
+              {/* ⚠️ TOMBOL KONFIRMASI PEMBAYARAN MANUAL (COD) */}
+              {order.status_pembayaran !== "Paid" &&
+                order.total_biaya_final > 0 && (
+                  <div className="mt-4 pt-3 border-t border-dashed border-gray-300">
+                    <p className="text-sm font-medium text-red-500 mb-2">
+                      PERINGATAN: Pesanan Belum Lunas!
+                    </p>
+                    <button
+                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition w-full"
+                      onClick={async () => {
+                        if (
+                          !confirm(
+                            `Yakin konfirmasi pembayaran LUNAS sebesar Rp ${Number(
+                              order.total_biaya_final,
+                            ).toLocaleString("id-ID")},-?`,
+                          )
+                        )
+                          return;
+
+                        try {
+                          const { error } = await supabase
+                            .from("pesanan")
+                            .update({
+                              status_pembayaran: "Paid",
+                              tgl_pembayaran_lunas: new Date().toISOString(),
+                              metode_pembayaran:
+                                order.metode_pembayaran === "COD"
+                                  ? "COD"
+                                  : "QRIS",
+                              jumlah_dibayar: order.total_biaya_final,
+                            })
+                            .eq("id_pesanan", order.id_pesanan);
+                          if (error) throw error;
+                          alert("Pembayaran berhasil dikonfirmasi LUNAS!");
+                          // Fetch ulang data pesanan untuk update tampilan
+                          window.location.reload();
+                        } catch (err) {
+                          console.error(err);
+                          alert("Gagal konfirmasi pembayaran");
+                        }
+                      }}
+                    >
+                      Konfirmasi Pembayaran LUNAS
+                    </button>
+                  </div>
+                )}
+
               <div className="flex justify-between">
                 <span className="text-gray-600 font-medium">
                   Status Pesanan
