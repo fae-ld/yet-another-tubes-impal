@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { useUser } from "@/contexts/UserContext";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 import { supabase } from "@/lib/supabase";
-import OrdersTable from "@/components/staff/orders/OrdersTable"; // ⬅️ IMPORT KOMPONEN BARU
+import OrdersTable from "@/components/staff/orders/OrdersTable";
 import NotFound from "@/components/errors/404";
 
 export default function OrdersPage() {
@@ -14,9 +14,12 @@ export default function OrdersPage() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
-  if (!user) return <NotFound />;
-
   useEffect(() => {
+    if (!user || loading) {
+      setOrdersLoading(true);
+      return;
+    }
+
     const loadOrders = async () => {
       setOrdersLoading(true);
       setFetchError(null);
@@ -37,7 +40,7 @@ export default function OrdersPage() {
     };
 
     loadOrders();
-  }, [user]);
+  }, [user, loading]);
 
   if (loading || ordersLoading) {
     return (
@@ -51,6 +54,15 @@ export default function OrdersPage() {
           </div>
         </div>
       </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <NotFound
+        title="Akses Ditolak"
+        message="Anda harus login sebagai Staff untuk melihat halaman ini."
+      />
     );
   }
 
@@ -70,7 +82,6 @@ export default function OrdersPage() {
           </div>
         )}
 
-        {/* 🔥 Tampilkan tabel */}
         <OrdersTable orders={orders} />
       </div>
     </StaffDashboardLayout>

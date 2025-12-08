@@ -88,6 +88,9 @@ export default function OrdersTable({ orders }) {
                   <td className="px-4 py-3 text-sm text-right text-gray-600">
                     {o.berat_aktual ?? "-"}
                   </td>
+                  <td className="px-4 py-3 text-sm text-right text-gray-600">
+                    {o.metode_pembayaran ?? "-"}
+                  </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-800">
                     {o.total_biaya_final != null
                       ? Number(o.total_biaya_final).toLocaleString("id-ID")
@@ -126,10 +129,10 @@ export default function OrdersTable({ orders }) {
                       className="relative p-3 text-red-600 hover:bg-red-100 rounded-lg group"
                       onClick={() => alert(`Hapus Order ID: ${o.id_pesanan}`)}
                     >
-                      <Trash2 size={22} />
+                      {/* <Trash2 size={22} />
                       <span className="absolute -top-6 left-1/2 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
                         Hapus
-                      </span>
+                      </span> */}
                     </button>
                   </td>
                 </tr>

@@ -26,7 +26,7 @@ export const UserProvider = ({ children }) => {
       },
     );
 
-    return () => subscription.unsubscribe();
+    return () => subscription?.unsubscribe();
   }, []);
 
   return (
