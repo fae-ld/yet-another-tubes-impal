@@ -5,6 +5,7 @@ import { useUser } from "@/contexts/UserContext";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 import { supabase } from "@/lib/supabase";
 import OrdersTable from "@/components/staff/orders/OrdersTable"; // ⬅️ IMPORT KOMPONEN BARU
+import NotFound from "@/components/errors/404";
 
 export default function OrdersPage() {
   const { user, loading } = useUser();
@@ -13,9 +14,9 @@ export default function OrdersPage() {
   const [ordersLoading, setOrdersLoading] = useState(true);
   const [fetchError, setFetchError] = useState(null);
 
-  useEffect(() => {
-    if (!user) return;
+  if (!user) return <NotFound />;
 
+  useEffect(() => {
     const loadOrders = async () => {
       setOrdersLoading(true);
       setFetchError(null);

@@ -4,16 +4,21 @@ import { jwtVerify } from "jose";
 const COOKIE_NAME = "role";
 const COOKIE_SECRET = process.env.COOKIE_SECRET;
 
+// Rute yang diizinkan untuk diakses publik (dinamis: menampilkan login jika belum auth, dashboard jika sudah auth)
+// Kita masukkan '/' dan '/staff' di sini.
+const ALLOWED_PUBLIC_PATHS = ["/", "/staff"];
+
 export async function middleware(req) {
   const url = req.nextUrl.clone();
   const { pathname } = req.nextUrl;
 
-  // ambil cookie
-  const token = req.cookies.get(COOKIE_NAME)?.value;
+  // Cek apakah pathname yang diakses adalah salah satu dari entry point publik
+  const isPublicPath = ALLOWED_PUBLIC_PATHS.includes(pathname);
 
+  // 1. Ambil cookie dan verifikasi token
+  const token = req.cookies.get(COOKIE_NAME)?.value;
   let role = null;
 
-  // kalau ada token, verify
   if (token) {
     try {
       const { payload } = await jwtVerify(
@@ -22,29 +27,51 @@ export async function middleware(req) {
       );
       role = payload.role;
     } catch (err) {
-      console.log("Invalid role token:", err.message);
+      console.log("Invalid role token, deleting cookie:", err.message);
+      // Jika token invalid/expired, hapus cookie dan arahkan ke root
+      const response = NextResponse.redirect(new URL("/", req.url));
+      response.cookies.delete(COOKIE_NAME);
+      return response;
     }
   }
 
-  // ====== RULE: BELUM LOGIN → BEBAS MASUK KEMANA SAJA ======
+  // =========================================================
+  // LOGIKA UTAMA: PROTEKSI DAN OTORISASI
+  // =========================================================
+
+  // A. Jika pengguna BELUM LOGIN (role null)
   if (!role) {
+    // Jika mencoba mengakses rute SELAIN rute publik ('/' atau '/staff')
+    if (!isPublicPath) {
+      // Redirect ke rute root "/" (yang akan menampilkan form login pelanggan)
+      url.pathname = "/";
+      return NextResponse.redirect(url);
+    }
+
+    // Jika mengakses rute publik ('/' atau '/staff') saat belum login, biarkan akses.
+    // Asumsi: Component di / dan /staff akan menampilkan UI login.
     return NextResponse.next();
   }
 
-  // ====== SUDAH LOGIN → CEK ROLE ======
+  // B. Jika pengguna SUDAH LOGIN (role ada)
 
-  // kalau staff → hanya boleh ke /staff*
+  // 1. Logic Otorisasi (Pelanggan vs Staf)
+
+  // Kalau staff → harus ke /staff*
+  // Jika staff mencoba mengakses rute non-staff (e.g., /orders atau /)
   if (role === "staf" && !pathname.startsWith("/staff")) {
-    url.pathname = "/staff";
+    url.pathname = "/staff"; // Redirect ke dashboard staf
     return NextResponse.redirect(url);
   }
 
-  // kalau pelanggan → tidak boleh ke /staff*
+  // Kalau pelanggan → tidak boleh ke /staff*
+  // Jika pelanggan mencoba mengakses rute staf (e.g., /staff atau /staff/orders)
   if (role === "pelanggan" && pathname.startsWith("/staff")) {
-    url.pathname = "/";
+    url.pathname = "/"; // Redirect ke dashboard pelanggan
     return NextResponse.redirect(url);
   }
 
+  // Lanjutkan jika semua rule dilewati
   return NextResponse.next();
 }
 
