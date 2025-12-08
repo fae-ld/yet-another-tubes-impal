@@ -105,6 +105,7 @@ export default function ServicesPage() {
       const { data, error } = await supabase
         .from("layanan")
         .select("*")
+        .eq("is_archived", false)
         .order("id_layanan", { ascending: true }); // Pastikan order konsisten
 
       if (!error && data) {
@@ -180,7 +181,7 @@ export default function ServicesPage() {
     // --- Data Pesanan ---
     const newOrder = {
       id_pelanggan: user.id,
-      jenis_layanan: selectedService.title,
+      id_layanan: selectedService.id,
       estimasi_berat: berat,
       // Total biaya diisi di awal, tapi akan diverifikasi staff
       total_biaya_final: totalBiaya, // Sementara disamakan

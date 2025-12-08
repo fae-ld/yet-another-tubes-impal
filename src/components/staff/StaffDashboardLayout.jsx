@@ -11,6 +11,7 @@ import {
   Menu,
   ClipboardList,
   UserCog,
+  ShoppingCart,
 } from "lucide-react";
 import { useUser } from "@/contexts/UserContext";
 import { supabase } from "@/lib/supabase";
@@ -35,20 +36,20 @@ export default function StaffDashboardLayout({ children }) {
       href: "/staff/orders",
     },
     {
-      name: "Transactions",
-      icon: <ReceiptText size={24} />,
-      href: "/staff/transactions",
+      name: "Services",
+      icon: <ShoppingCart size={24} />,
+      href: "/staff/services",
     },
-    {
-      name: "Notifications",
-      icon: <Bell size={24} />,
-      href: "/staff/notifications",
-    },
-    {
-      name: "Staff Settings",
-      icon: <UserCog size={24} />,
-      href: "/staff/settings",
-    },
+    // {
+    //   name: "Notifications",
+    //   icon: <Bell size={24} />,
+    //   href: "/staff/notifications",
+    // },
+    // {
+    //   name: "Staff Settings",
+    //   icon: <UserCog size={24} />,
+    //   href: "/staff/settings",
+    // },
     {
       name: "Logout",
       icon: <LogOut size={24} />,

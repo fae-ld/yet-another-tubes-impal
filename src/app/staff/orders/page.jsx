@@ -25,12 +25,28 @@ export default function OrdersPage() {
       setFetchError(null);
 
       try {
-        const { data, error } = await supabase
+        let { data, error } = await supabase
           .from("pesanan")
-          .select("*")
-          .order("id_pesanan", { ascending: false });
+          .select(
+            `
+    *, 
+    layanan:id_layanan (
+    jenis_layanan,
+      is_archived
+    )
+    `,
+          )
+          .order("id_pesanan", { ascending: false })
+          // --- KONDISI FILTER PADA TABEL LAYANAN YANG DI-JOIN ---
+          .eq("layanan.is_archived", false);
 
         if (error) throw error;
+
+        // Client-side filtering
+        if (data) {
+          data = data.filter((pesanan) => pesanan.layanan !== null);
+        }
+
         setOrders(data || []);
       } catch (err) {
         setFetchError(err.message || "Unknown error");

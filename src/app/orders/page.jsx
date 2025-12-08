@@ -62,9 +62,22 @@ export default function OrdersPage() {
       const { data, error } = await supabase
         .from("pesanan")
         .select(
-          "id_pesanan, jenis_layanan, tgl_pesanan, status_pembayaran, status_pesanan",
+          `
+    id_pesanan, 
+    id_layanan, 
+    tgl_pesanan, 
+    status_pembayaran, 
+    status_pesanan,
+    layanan:id_layanan (
+      jenis_layanan,
+      is_archived 
+    )
+    `,
         )
         .eq("id_pelanggan", user.id)
+        // --- KONDISI FILTER: HANYA PESANAN DENGAN LAYANAN NON-ARSIP ---
+        .eq("layanan.is_archived", false)
+        // -----------------------------------------------------------------
         .order("tgl_pesanan", { ascending: false });
 
       if (error) {

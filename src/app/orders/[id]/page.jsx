@@ -122,6 +122,7 @@ export default function OrderDetailsPage() {
   const [timeline, setTimeline] = useState([]);
   const [loadingPage, setLoadingPage] = useState(true);
   const [existingReview, setExistingReview] = useState(null);
+  const [layanan, setLayanan] = useState(null);
 
   // Fetch data pesanan & timeline
   useEffect(() => {
@@ -133,21 +134,47 @@ export default function OrderDetailsPage() {
         // Ambil data pesanan
         const { data: pesanan, error: pesananError } = await supabase
           .from("pesanan")
-          .select("*")
+          .select(
+            `
+      *,
+      layanan (
+        jenis_layanan,
+        is_archived
+      )
+    `,
+          )
           .eq("id_pesanan", id)
           .eq("id_pelanggan", user.id)
+          // --- KONDISI FILTER PADA TABEL YANG DI-JOIN ---
+          // Memastikan layanan yang di-join tidak diarsipkan.
+          .eq("layanan.is_archived", false)
           .single();
 
         if (pesananError) {
-          // Logika untuk 404 jika pesanan tidak ditemukan atau tidak valid
+          // PGRST116: Error code jika single() tidak menemukan data
           if (pesananError.code === "PGRST116") {
-            // Error code jika single() tidak menemukan data
             setOrder(null);
+            setLayanan(null); // Penting: set layanan menjadi null juga
           } else {
+            // Error lain (misalnya, masalah koneksi)
             throw pesananError;
           }
         }
-        setOrder(pesanan);
+
+        // Cek integritas data: Jika pesanan ditemukan tetapi layanannya null karena filter (walaupun harusnya tidak terjadi jika filter .eq("layanan.is_archived", false) berfungsi)
+        if (pesanan && (!pesanan.layanan || pesanan.layanan.is_archived)) {
+          // Jika pesanan ada, tapi layanan di-filter (sudah diarsipkan), perlakukan sebagai 404/Not Found
+          setOrder(null);
+          setLayanan(null);
+          return;
+        }
+
+        // Jika berhasil, data layanan akan berada di dalam objek pesanan
+        if (pesanan) {
+          // Memecah hasil
+          setOrder(pesanan);
+          setLayanan(pesanan.layanan);
+        }
 
         // Ambil data riwayat status
         const { data: riwayat, error: riwayatError } = await supabase
@@ -372,15 +399,87 @@ export default function OrderDetailsPage() {
           {/* Header */}
           <div className="text-center">
             <h1 className="text-2xl font-bold text-blue-700 mb-2">
-              {order.jenis_layanan}
+              {layanan.jenis_layanan}
             </h1>
-            <p className="text-gray-500">
+            <p className="text-gray-500 mb-4">
               {new Date(order.tgl_pesanan).toLocaleDateString("id-ID", {
                 day: "numeric",
                 month: "short",
                 year: "numeric",
               })}
             </p>
+
+            {/* --- START: Detail Informasi Berat --- */}
+            <div className="flex justify-center items-center space-x-6 border-t border-b py-3 mb-4 bg-blue-50/50 rounded-lg">
+              {/* 1. Berat Estimasi */}
+              <div className="flex flex-col items-center">
+                <p className="text-sm font-semibold text-gray-600">
+                  Estimasi Berat ⚖️
+                </p>
+                <p className="text-xl font-bold text-blue-600">
+                  {order.estimasi_berat
+                    ? `${order.estimasi_berat.toFixed(1)} kg`
+                    : "N/A"}
+                </p>
+              </div>
+
+              {/* Pembatas Vertikal */}
+              <div className="w-px h-10 bg-gray-300"></div>
+
+              {/* 2. Berat Aktual */}
+              <div className="flex flex-col items-center">
+                <p className="text-sm font-semibold text-gray-600">
+                  Berat Aktual ✅
+                </p>
+                <p className="text-xl font-bold text-green-600">
+                  {order.berat_aktual ? (
+                    `${order.berat_aktual.toFixed(1)} kg`
+                  ) : (
+                    <span className="text-red-500">Belum Ditimbang</span>
+                  )}
+                </p>
+              </div>
+            </div>
+
+            {/* 3. Estimasi Sisa Hari (Baru Ditambahkan) */}
+            <div className="flex flex-col items-center px-2">
+              {order.status_pesanan !== "Selesai" && (
+                <>
+                  {/* Pembatas Vertikal */}
+                  <div className="w-px h-10 bg-gray-300"></div>
+
+                  {/* 3. Estimasi Sisa Hari */}
+                  <div className="flex flex-col items-center px-2">
+                    <p className="text-xs font-semibold text-gray-600">
+                      Sisa Hari (Estimasi) ⏳
+                    </p>
+                    <p className="text-lg font-bold text-purple-600">
+                      {(() => {
+                        if (!order.jadwal_selesai) return "TBD";
+
+                        const estimatedDate = new Date(order.jadwal_selesai);
+                        const today = new Date();
+
+                        // Normalisasi waktu ke tengah malam untuk perhitungan hari yang akurat
+                        estimatedDate.setHours(0, 0, 0, 0);
+                        today.setHours(0, 0, 0, 0);
+
+                        const diffTime =
+                          estimatedDate.getTime() - today.getTime();
+                        const diffDays = Math.ceil(
+                          diffTime / (1000 * 60 * 60 * 24),
+                        );
+
+                        if (diffDays === 0) return "Hari Ini!";
+                        if (diffDays < 0) return "Terlambat!"; // Jika tanggal estimasi sudah lewat
+
+                        return `${diffDays} hari`;
+                      })()}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
 
             {/* Menampilkan Status Saat Ini */}
             <div

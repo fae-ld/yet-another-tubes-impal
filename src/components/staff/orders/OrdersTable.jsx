@@ -83,7 +83,7 @@ export default function OrdersTable({ orders }) {
                     {o.id_pelanggan}
                   </td>
                   <td className="px-4 py-3 text-sm text-gray-700">
-                    {o.jenis_layanan}
+                    {o.layanan?.jenis_layanan}
                   </td>
                   <td className="px-4 py-3 text-sm text-right text-gray-600">
                     {o.estimasi_berat ?? "-"}
