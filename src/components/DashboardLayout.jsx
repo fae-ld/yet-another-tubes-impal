@@ -11,6 +11,7 @@ import {
   Menu,
   ShoppingCart,
   ReceiptText,
+  MegaphoneIcon,
 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
@@ -27,6 +28,11 @@ export default function DashboardLayout({ children }) {
     { name: "Services", icon: <ShoppingCart size={24} />, href: "/services" },
     { name: "Orders", icon: <ReceiptText size={24} />, href: "/orders" },
     { name: "Notifications", icon: <Bell size={24} />, href: "/notifications" },
+    {
+      name: "Announcements",
+      icon: <MegaphoneIcon size={24} />,
+      href: "/announcements",
+    },
     { name: "Settings", icon: <Settings size={24} />, href: "/settings" },
     { name: "Logout", icon: <LogOut size={24} />, href: "#", isLogout: true },
   ];
