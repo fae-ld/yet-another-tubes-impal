@@ -518,6 +518,11 @@ export default function OrderDetailPage() {
                   value={order.berat_aktual ?? ""}
                   onChange={(e) => {
                     const berat = parseFloat(e.target.value);
+
+                    if(berat <= 0) {
+                      return;
+                    }
+
                     const hargaPerKg = service?.harga_per_kg;
                     setOrder({
                       ...order,
