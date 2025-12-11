@@ -7,6 +7,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
 import { Minus, Plus, Loader2 } from "lucide-react"; // Import ikon
+import Link from "next/link";
 
 // Komponen Reusable untuk input stepper (Tombol +/-)
 const StepperInput = ({ label, value, onChange, unit }) => {
@@ -78,6 +79,7 @@ export default function ServicesPage() {
   });
   const [loading, setLoading] = useState(false);
   const [loadingServices, setLoadingServices] = useState(true);
+  const [alamat, setAlamat] = useState(null);
 
   const CACHE_KEY = "services_cache";
   const CACHE_TTL = 6000 * 60 * 60; // 6 jam
@@ -131,6 +133,24 @@ export default function ServicesPage() {
     };
     fetchServices();
   }, [selectedServiceId]);
+
+  useEffect(() => {
+    if (!user) return;
+
+    async function fetchPelanggan() {
+      const { data, error } = await supabase
+        .from("pelanggan")
+        .select("alamat")
+        .eq("id_pelanggan", user.id)
+        .single();
+
+      if (!error && data) {
+        setAlamat(data.alamat || "");
+      }
+    }
+
+    fetchPelanggan();
+  }, [user]);
 
   // **Handler Form Submission**
   const handleSubmit = async (e) => {
@@ -354,14 +374,26 @@ export default function ServicesPage() {
                 </label>
                 <textarea
                   placeholder="Contoh: Jl. Sudirman No. 123, Jakarta"
-                  value={formData.address}
+                  value={alamat}
                   onChange={(e) =>
                     setFormData({ ...formData, address: e.target.value })
                   }
                   className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm resize-none"
                   rows={3}
+                  disabled
                   required
                 />
+                <p className="text-xs text-red-500 mt-1 italic">
+    Alamat tidak bisa diubah di halaman ini.  
+    Silakan ubah lewat{" "}
+    <Link
+      href="/settings"
+      className="font-semibold underline underline-offset-2 hover:text-red-700 transition"
+    >
+      Settings
+    </Link>{" "}
+    ya ✨
+  </p>
               </div>
 
               {/* Estimasi Selesai */}
