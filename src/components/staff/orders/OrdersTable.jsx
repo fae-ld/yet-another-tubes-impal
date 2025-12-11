@@ -50,19 +50,33 @@ export default function OrdersTable({ orders }) {
           <TableBody>
             {orders.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={11} className="text-center py-6 text-gray-500">
+                <TableCell
+                  colSpan={11}
+                  className="text-center py-6 text-gray-500"
+                >
                   Tidak ada pesanan.
                 </TableCell>
               </TableRow>
             ) : (
               orders.map((o) => (
-                <TableRow key={o.id_pesanan} className="hover:bg-purple-50 transition-colors">
+                <TableRow
+                  key={o.id_pesanan}
+                  className="hover:bg-purple-50 transition-colors"
+                >
                   <TableCell>#{o.id_pesanan}</TableCell>
-                  <TableCell className="truncate max-w-xs">{o.id_pelanggan}</TableCell>
+                  <TableCell className="truncate max-w-xs">
+                    {o.id_pelanggan}
+                  </TableCell>
                   <TableCell>{o.layanan?.jenis_layanan}</TableCell>
-                  <TableCell className="text-right">{o.estimasi_berat ?? "-"}</TableCell>
-                  <TableCell className="text-right">{o.berat_aktual ?? "-"}</TableCell>
-                  <TableCell className="text-right">{o.metode_pembayaran ?? "-"}</TableCell>
+                  <TableCell className="text-right">
+                    {o.estimasi_berat ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {o.berat_aktual ?? "-"}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {o.metode_pembayaran ?? "-"}
+                  </TableCell>
                   <TableCell className="text-right">
                     {o.total_biaya_final != null
                       ? Number(o.total_biaya_final).toLocaleString("id-ID")
@@ -113,11 +127,18 @@ export default function OrdersTable({ orders }) {
         )}
 
         {orders.map((o) => (
-          <div key={o.id_pesanan} className="bg-white p-4 rounded-xl shadow border border-gray-100">
+          <div
+            key={o.id_pesanan}
+            className="bg-white p-4 rounded-xl shadow border border-gray-100"
+          >
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm font-semibold text-purple-600">#{o.id_pesanan}</div>
-                <div className="text-xs text-gray-500 truncate">{o.id_pelanggan}</div>
+                <div className="text-sm font-semibold text-purple-600">
+                  #{o.id_pesanan}
+                </div>
+                <div className="text-xs text-gray-500 truncate">
+                  {o.id_pelanggan}
+                </div>
               </div>
               <div className="text-right">
                 <div className="text-sm font-medium text-gray-800">

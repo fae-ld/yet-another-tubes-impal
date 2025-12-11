@@ -384,16 +384,15 @@ export default function ServicesPage() {
                   required
                 />
                 <p className="text-xs text-red-500 mt-1 italic">
-    Alamat tidak bisa diubah di halaman ini.  
-    Silakan ubah lewat{" "}
-    <Link
-      href="/settings"
-      className="font-semibold underline underline-offset-2 hover:text-red-700 transition"
-    >
-      Settings
-    </Link>{" "}
-    ya ✨
-  </p>
+                  Alamat tidak bisa diubah di halaman ini. Silakan ubah lewat{" "}
+                  <Link
+                    href="/settings"
+                    className="font-semibold underline underline-offset-2 hover:text-red-700 transition"
+                  >
+                    Settings
+                  </Link>{" "}
+                  ya ✨
+                </p>
               </div>
 
               {/* Estimasi Selesai */}

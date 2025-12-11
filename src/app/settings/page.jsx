@@ -7,12 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import DeleteAccountButton from "@/components/settings/DeleteAccountButton";
-import {
-  Card,
-  CardHeader,
-  CardTitle,
-  CardContent,
-} from "@/components/ui/card";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { supabase } from "@/lib/supabase";
 
 export default function SettingsPage() {
@@ -134,12 +129,11 @@ export default function SettingsPage() {
             </Button>
 
             <div className="pt-4 border-t mt-6">
-  <h2 className="text-lg font-semibold text-red-600 mb-2">
-    Danger Zone
-  </h2>
-  <DeleteAccountButton />
-</div>
-
+              <h2 className="text-lg font-semibold text-red-600 mb-2">
+                Danger Zone
+              </h2>
+              <DeleteAccountButton />
+            </div>
           </CardContent>
         </Card>
       </div>

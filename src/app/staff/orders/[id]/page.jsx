@@ -519,7 +519,7 @@ export default function OrderDetailPage() {
                   onChange={(e) => {
                     const berat = parseFloat(e.target.value);
 
-                    if(berat <= 0) {
+                    if (berat <= 0) {
                       return;
                     }
 

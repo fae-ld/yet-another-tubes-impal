@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useUser } from "@/contexts/UserContext";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/lib/supabase";
 import { useRouter } from "next/navigation";
@@ -64,9 +70,9 @@ export default function DeleteAccountButton() {
 
           <div className="space-y-3">
             <p className="text-sm text-gray-600 leading-relaxed">
-              Tindakan ini <b>tidak bisa dibatalkan</b>.  
-              Semua pesanan, ulasan, dan data kamu akan terhapus selamanya.  
-              Jika kamu yakin, ketik <b>SAYA YAKIN</b> di bawah:
+              Tindakan ini <b>tidak bisa dibatalkan</b>. Semua pesanan, ulasan,
+              dan data kamu akan terhapus selamanya. Jika kamu yakin, ketik{" "}
+              <b>SAYA YAKIN</b> di bawah:
             </p>
 
             <Input
