@@ -8,6 +8,17 @@ const UserContext = createContext();
 const insertPelanggan = async (user) => {
   if (!user) return;
 
+  // Cek apakah email ada di tabel staf
+  const { data, error } = await supabase
+    .from("staf")
+    .select("*")
+    .eq("email", user.email)
+    .maybeSingle();
+
+  if (data) {
+    return;
+  }
+
   // 1. Cek apakah user sudah ada di tabel 'pelanggan'
   const { data: existingData, error: selectError } = await supabase
     .from("pelanggan")
