@@ -79,7 +79,8 @@ export default function ServicesPage() {
   });
   const [loading, setLoading] = useState(false);
   const [loadingServices, setLoadingServices] = useState(true);
-  const [alamat, setAlamat] = useState(null);
+  const [alamatUser, setAlamatUser] = useState(null);
+  const [useMyAddress, setUseMyAddress] = useState(false);
 
   const CACHE_KEY = "services_cache";
   const CACHE_TTL = 6000 * 60 * 60; // 6 jam
@@ -145,7 +146,7 @@ export default function ServicesPage() {
         .single();
 
       if (!error && data) {
-        setAlamat(data.alamat || "");
+        setAlamatUser(data.alamat || "");
       }
     }
 
@@ -369,32 +370,80 @@ export default function ServicesPage() {
 
               {/* Alamat Lengkap */}
               <div className="flex flex-col">
+                {/* Checkbox untuk Alamat */}
+                <div className="flex items-center mb-3">
+                  <input
+                    type="checkbox"
+                    id="useMyAddressCheckbox"
+                    checked={useMyAddress}
+                    onChange={(e) => {
+                      const isChecked = e.target.checked;
+
+                      // 1. Cek apakah alamatUser kosong/null
+                      if (
+                        isChecked &&
+                        (!alamatUser || alamatUser.trim() === "")
+                      ) {
+                        alert(
+                          "⚠️ Alamat Anda di profil (alamatUser) masih kosong. Mohon isi dulu di halaman Settings jika ingin menggunakan fitur 'Pake alamat saya'.",
+                        );
+
+                        // Mencegah state useMyAddress berubah menjadi true jika alamatUser kosong
+                        setUseMyAddress(false);
+                        return;
+                      }
+
+                      // 2. Lanjutkan logika jika alamatUser ada atau jika user ingin un-check (isChecked = false)
+                      setUseMyAddress(isChecked);
+
+                      if (isChecked) {
+                        // Jika dicentang dan alamat ada: Gunakan alamatUser
+                        setFormData({ ...formData, address: alamatUser });
+                      } else {
+                        // Jika tidak dicentang: Kosongkan untuk input manual
+                        setFormData({ ...formData, address: "" });
+                      }
+                    }}
+                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                  />
+                  <label
+                    htmlFor="useMyAddressCheckbox"
+                    className="ml-2 text-blue-700 font-medium cursor-pointer"
+                  >
+                    Pake alamat saya
+                  </label>
+                </div>
+
                 <label className="text-blue-700 font-medium mb-1">
                   Alamat Lengkap 🏠
                 </label>
                 <textarea
                   placeholder="Contoh: Jl. Sudirman No. 123, Jakarta"
-                  value={alamat}
+                  value={formData.address}
                   onChange={(e) =>
                     setFormData({ ...formData, address: e.target.value })
                   }
-                  className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm resize-none"
+                  className={`border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full shadow-sm resize-none 
+      ${useMyAddress ? "border-gray-300 bg-gray-50 text-gray-500" : "border-blue-200 focus:ring-blue-400"}`}
                   rows={3}
-                  disabled
+                  disabled={useMyAddress}
                   required
                 />
-                <p className="text-xs text-red-500 mt-1 italic">
-                  Alamat tidak bisa diubah di halaman ini. Silakan ubah lewat{" "}
-                  <Link
-                    href="/settings"
-                    className="font-semibold underline underline-offset-2 hover:text-red-700 transition"
-                  >
-                    Settings
-                  </Link>{" "}
-                  ya ✨
-                </p>
-              </div>
 
+                {/* Pesan Keterangan */}
+                {useMyAddress && (
+                  <p className="text-xs text-green-600 mt-1 italic">
+                    Alamat diambil dari profil (`alamatUser`). Lepas centang
+                    untuk input alamat lain.
+                  </p>
+                )}
+                {(!alamatUser || alamatUser.trim() === "") && (
+                  <p className="text-xs text-orange-500 mt-1 font-semibold">
+                    💡 Alamat profil Anda masih kosong. Isi alamat manual atau
+                    update di Settings.
+                  </p>
+                )}
+              </div>
               {/* Estimasi Selesai */}
               <div className="flex flex-col">
                 <label className="text-blue-700 font-medium mb-1">
