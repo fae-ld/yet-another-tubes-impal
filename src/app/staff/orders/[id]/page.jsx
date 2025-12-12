@@ -210,7 +210,7 @@ export default function OrderDetailPage() {
           const { data: serviceData, error: serviceError } = await supabase
             .from("layanan")
             .select("*")
-            .eq("jenis_layanan", orderData.jenis_layanan)
+            .eq("id_layanan", orderData.id_layanan)
             .single();
           if (serviceError) throw serviceError;
 
