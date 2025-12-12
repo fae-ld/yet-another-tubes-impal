@@ -12,8 +12,10 @@ const supabase = createClient(
 export async function POST(req) {
   const { userId } = await req.json();
 
-  if (!userId)
+  if (!userId) {
+    console.error("No User id");
     return NextResponse.json({ error: "User ID required" }, { status: 400 });
+  }
 
   let role = null;
 
@@ -23,18 +25,25 @@ export async function POST(req) {
     .eq("id_pelanggan", userId)
     .single();
 
-  if (pelanggan) role = "pelanggan";
+  if (pelanggan) {
+    role = "pelanggan";
+  } else {
+    const { data: staf } = await supabase
+      .from("staf")
+      .select("*")
+      .eq("id_staf", userId)
+      .single();
 
-  const { data: staf } = await supabase
-    .from("staf")
-    .select("*")
-    .eq("id_staf", userId)
-    .single();
+    if (staf) role = "staf";
 
-  if (staf) role = "staf";
-
-  if (!role)
-    return NextResponse.json({ error: "User role not found" }, { status: 400 });
+    if (!role) {
+      console.error("Gaada di staf");
+      return NextResponse.json(
+        { error: "User role not found" },
+        { status: 400 },
+      );
+    }
+  }
 
   const token = await new SignJWT({ role })
     .setProtectedHeader({ alg: "HS256" })

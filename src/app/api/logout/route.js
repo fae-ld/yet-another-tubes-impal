@@ -8,7 +8,7 @@ export async function GET() {
   const cookieStore = cookies();
 
   // Hapus cookies custom yang kamu pakai
-  cookieStore.set("role", "", {
+  await cookieStore.set("role", "", {
     path: "/",
     maxAge: 0,
   });

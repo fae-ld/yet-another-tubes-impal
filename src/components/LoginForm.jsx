@@ -35,11 +35,11 @@ export default function LoginForm() {
 
       if (error) return alert(error.message);
 
-      await fetch("/api/set-role", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ userId: session.user.id }),
-      });
+      // await fetch("/api/set-role", {
+      //   method: "POST",
+      //   headers: { "Content-Type": "application/json" },
+      //   body: JSON.stringify({ userId: session.user.id }),
+      // });
     } else {
       // REGISTER
       if (password !== confirmPassword) return alert("Passwords do not match.");
