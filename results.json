@@ -1,0 +1,58 @@
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\api\set-role\route-secure.js[24m[0m
+[0m  [2m67:10[22m  [31merror[39m  Parsing error: Identifier 'token' has already been declared. (67:10)[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\orders\[id]\page.jsx[24m[0m
+[0m   [2m70:7[22m   [33mwarning[39m  Define a constant instead of duplicating this literal 3 times                      [2msonarjs/no-duplicate-string[22m[0m
+[0m   [2m74:7[22m   [33mwarning[39m  Define a constant instead of duplicating this literal 5 times                      [2msonarjs/no-duplicate-string[22m[0m
+[0m   [2m80:26[22m  [33mwarning[39m  Define a constant instead of duplicating this literal 3 times                      [2msonarjs/no-duplicate-string[22m[0m
+[0m  [2m116:16[22m  [31merror[39m    Function 'OrderDetailsPage' has a complexity of 44. Maximum allowed is 10          [2mcomplexity[22m[0m
+[0m  [2m130:33[22m  [31merror[39m    Async arrow function has a complexity of 14. Maximum allowed is 10                 [2mcomplexity[22m[0m
+[0m  [2m269:7[22m   [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m  [2m279:11[22m  [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m  [2m333:17[22m  [31merror[39m    'insertNotification' is not defined                                                [2mno-undef[22m[0m
+[0m  [2m346:11[22m  [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m  [2m354:11[22m  [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\orders\[id]\page_old.jsx[24m[0m
+[0m   [2m70:7[22m   [33mwarning[39m  Define a constant instead of duplicating this literal 3 times                      [2msonarjs/no-duplicate-string[22m[0m
+[0m   [2m74:7[22m   [33mwarning[39m  Define a constant instead of duplicating this literal 5 times                      [2msonarjs/no-duplicate-string[22m[0m
+[0m   [2m86:16[22m  [31merror[39m    Function 'OrderDetailsPage' has a complexity of 24. Maximum allowed is 10          [2mcomplexity[22m[0m
+[0m  [2m199:7[22m   [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m  [2m209:11[22m  [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m  [2m263:17[22m  [31merror[39m    'insertNotification' is not defined                                                [2mno-undef[22m[0m
+[0m  [2m276:11[22m  [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m  [2m284:11[22m  [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\orders\page.jsx[24m[0m
+[0m  [2m34:7[22m  [33mwarning[39m  Define a constant instead of duplicating this literal 4 times  [2msonarjs/no-duplicate-string[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\services\page.jsx[24m[0m
+[0m   [2m67:16[22m  [31merror[39m    Function 'ServicesPage' has a complexity of 11. Maximum allowed is 10              [2mcomplexity[22m[0m
+[0m  [2m157:34[22m  [31merror[39m    Async arrow function has a complexity of 11. Maximum allowed is 10                 [2mcomplexity[22m[0m
+[0m  [2m226:7[22m   [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\services\page_old.jsx[24m[0m
+[0m  [2m58:9[22m  [33mwarning[39m  Unexpected console statement. Only these console methods are allowed: warn, error  [2mno-console[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\staff\orders\[id]\page.jsx[24m[0m
+[0m   [2m32:12[22m  [33mwarning[39m  Define a constant instead of duplicating this literal 5 times                        [2msonarjs/no-duplicate-string[22m[0m
+[0m   [2m50:12[22m  [33mwarning[39m  Define a constant instead of duplicating this literal 3 times                        [2msonarjs/no-duplicate-string[22m[0m
+[0m   [2m56:12[22m  [33mwarning[39m  Define a constant instead of duplicating this literal 3 times                        [2msonarjs/no-duplicate-string[22m[0m
+[0m  [2m116:55[22m  [31merror[39m    Async arrow function has a complexity of 13. Maximum allowed is 10                   [2mcomplexity[22m[0m
+[0m  [2m186:16[22m  [31merror[39m    Function 'OrderDetailPage' has a complexity of 30. Maximum allowed is 10             [2mcomplexity[22m[0m
+[0m  [2m199:33[22m  [31merror[39m    Async arrow function has a complexity of 11. Maximum allowed is 10                   [2mcomplexity[22m[0m
+[0m  [2m264:47[22m  [31merror[39m    Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed  [2msonarjs/cognitive-complexity[22m[0m
+[0m  [2m264:47[22m  [31merror[39m    Async arrow function has a complexity of 25. Maximum allowed is 10                   [2mcomplexity[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\app\staff\services\page.jsx[24m[0m
+[0m  [2m282:40[22m  [31merror[39m  Arrow function has a complexity of 12. Maximum allowed is 10  [2mcomplexity[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\components\HomeSection.jsx[24m[0m
+[0m  [2m8:16[22m  [31merror[39m  Function 'HomeSection' has a complexity of 12. Maximum allowed is 10  [2mcomplexity[22m[0m
+[0m[0m
+[0m[4mC:\Users\tsfai\Projects\laundry-go\src\components\staff\announcements\AnnouncementForm.jsx[24m[0m
+[0m  [2m56:34[22m  [31merror[39m  Async arrow function has a complexity of 11. Maximum allowed is 10  [2mcomplexity[22m[0m
+[0m[0m
+[0m[31m[1m✖ 35 problems (16 errors, 19 warnings)[22m[39m[0m
+[0m[31m[1m[22m[39m[0m
