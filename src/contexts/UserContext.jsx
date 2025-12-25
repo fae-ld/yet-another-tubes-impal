@@ -6,52 +6,49 @@ import { supabase } from "@/lib/supabase";
 const UserContext = createContext();
 
 const insertPelanggan = async (user) => {
-  if (!user) return;
+  if (!user) return null;
 
   // Cek apakah email ada di tabel staf
-  const { data, error } = await supabase
+  const { data: stafData } = await supabase
     .from("staf")
     .select("*")
     .eq("email", user.email)
     .maybeSingle();
 
-  if (data) {
-    return;
-  }
+  if (stafData) return null;
 
-  // 1. Cek apakah user sudah ada di tabel 'pelanggan'
+  // 1. Cek apakah user sudah ada
   const { data: existingData, error: selectError } = await supabase
     .from("pelanggan")
-    .select("id_pelanggan")
+    .select("nama")
     .eq("id_pelanggan", user.id)
     .maybeSingle();
 
-  if (selectError && selectError.code !== "PGRST116") {
-    // PGRST116 = Data tidak ditemukan
+  if (selectError) {
     console.error("Gagal memeriksa pelanggan:", selectError.message);
-    return;
+    return null;
   }
 
-  // 2. Jika data pelanggan BELUM ADA, baru masukkan (INSERT)
-  if (!existingData) {
-    console.log("Memasukkan pelanggan baru ke tabel 'pelanggan'...");
-
-    // Supabase menyimpan nama user dari OAuth di object user_metadata
-    const fullName = user.user_metadata?.full_name || user.email;
-
-    const { error: insertError } = await supabase.from("pelanggan").insert([
-      {
-        id_pelanggan: user.id,
-        nama: fullName,
-      },
-    ]);
-
-    if (insertError) {
-      console.error("Gagal menyisipkan pelanggan baru:", insertError.message);
-    } else {
-      console.log(`Pelanggan baru (${fullName}) berhasil ditambahkan!`);
-    }
+  // 2. Jika SUDAH ADA, langsung kembalikan namanya
+  if (existingData) {
+    return existingData.nama;
   }
+
+  // 3. Jika BELUM ADA, insert baru
+  const fullName = user.user_metadata?.full_name || user.email;
+  const { error: insertError } = await supabase.from("pelanggan").insert([
+    {
+      id_pelanggan: user.id,
+      nama: fullName,
+    },
+  ]);
+
+  if (insertError) {
+    console.error("Gagal insert:", insertError.message);
+    return null;
+  }
+
+  return fullName;
 };
 
 export const UserProvider = ({ children }) => {
@@ -61,16 +58,17 @@ export const UserProvider = ({ children }) => {
   useEffect(() => {
     // --- 1. Ambil user saat komponen pertama kali dimuat ---
     const getInitialUser = async () => {
-      const {
-        data: { user: currentUser },
-      } = await supabase.auth.getUser();
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
 
-      setUser(currentUser);
-      setLoading(false);
-
-      // Panggil insertPelanggan untuk kasus user sudah login tapi data profil belum ada
-      if (currentUser) {
-        insertPelanggan(currentUser);
+        if (currentUser) {
+          const namaDariDb = await insertPelanggan(currentUser);
+          setUser({ ...currentUser, nama_pelanggan: namaDariDb });
+        }
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
       }
     };
 
