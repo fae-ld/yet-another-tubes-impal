@@ -1,24 +1,109 @@
 export const ORDER_SUBSTEPS_QRIS = [
-  { step: 1, label: "Pesanan Dibuat", icon: "🧾", desc: "Order berhasil dibuat dan masuk sistem." },
-  { step: 2, label: "Penjemputan", icon: "🚗", desc: "Kurir sedang menjemput pakaian ke alamat pelanggan." },
-  { step: 3, label: "Verifikasi Berat", icon: "⚖️", desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi." },
-  { step: 4, label: "Menunggu Pembayaran", icon: "💳", desc: "Berat/harga akhir sudah dikonfirmasi, menunggu pembayaran dari pelanggan." },
-  { step: 5, label: "Sedang Dicuci", icon: "💧", desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas)." },
-  { step: 6, label: "Sedang Disetrika", icon: "🔥", desc: "Proses setrika / finishing." },
-  { step: 7, label: "Selesai Dicuci", icon: "📦", desc: "Pakaian selesai dicuci, siap dikirim." },
-  { step: 8, label: "Sedang Diantar", icon: "🛵", desc: "Kurir mengantar pakaian ke pelanggan." },
-  { step: 9, label: "Selesai", icon: "✅", desc: "Pesanan diterima pelanggan, transaksi selesai." },
+  {
+    step: 1,
+    label: "Pesanan Dibuat",
+    icon: "🧾",
+    desc: "Order berhasil dibuat dan masuk sistem.",
+  },
+  {
+    step: 2,
+    label: "Penjemputan",
+    icon: "🚗",
+    desc: "Kurir sedang menjemput pakaian ke alamat pelanggan.",
+  },
+  {
+    step: 3,
+    label: "Verifikasi Berat",
+    icon: "⚖️",
+    desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi.",
+  },
+  {
+    step: 4,
+    label: "Menunggu Pembayaran",
+    icon: "💳",
+    desc: "Berat/harga akhir sudah dikonfirmasi, menunggu pembayaran dari pelanggan.",
+  },
+  {
+    step: 5,
+    label: "Sedang Dicuci",
+    icon: "💧",
+    desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas).",
+  },
+  {
+    step: 6,
+    label: "Sedang Disetrika",
+    icon: "🔥",
+    desc: "Proses setrika / finishing.",
+  },
+  {
+    step: 7,
+    label: "Selesai Dicuci",
+    icon: "📦",
+    desc: "Pakaian selesai dicuci, siap dikirim.",
+  },
+  {
+    step: 8,
+    label: "Sedang Diantar",
+    icon: "🛵",
+    desc: "Kurir mengantar pakaian ke pelanggan.",
+  },
+  {
+    step: 9,
+    label: "Selesai",
+    icon: "✅",
+    desc: "Pesanan diterima pelanggan, transaksi selesai.",
+  },
 ];
 
 export const ORDER_SUBSTEPS_COD = [
-  { step: 1, label: "Pesanan Dibuat", icon: "🧾", desc: "Order berhasil dibuat dan masuk sistem." },
-  { step: 2, label: "Penjemputan", icon: "🚗", desc: "Kurir sedang menjemput pakaian ke alamat pelanggan." },
-  { step: 3, label: "Verifikasi Berat", icon: "⚖️", desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi." },
-  { step: 4, label: "Sedang Dicuci", icon: "💧", desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas)." },
-  { step: 5, label: "Sedang Disetrika", icon: "🔥", desc: "Proses setrika / finishing." },
-  { step: 6, label: "Selesai Dicuci", icon: "📦", desc: "Pakaian selesai dicuci, siap dikirim." },
-  { step: 7, label: "Sedang Diantar", icon: "🛵", desc: "Kurir mengantar pakaian ke pelanggan." },
-  { step: 8, label: "Selesai", icon: "✅", desc: "Pesanan diterima pelanggan, transaksi selesai." },
+  {
+    step: 1,
+    label: "Pesanan Dibuat",
+    icon: "🧾",
+    desc: "Order berhasil dibuat dan masuk sistem.",
+  },
+  {
+    step: 2,
+    label: "Penjemputan",
+    icon: "🚗",
+    desc: "Kurir sedang menjemput pakaian ke alamat pelanggan.",
+  },
+  {
+    step: 3,
+    label: "Verifikasi Berat",
+    icon: "⚖️",
+    desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi.",
+  },
+  {
+    step: 4,
+    label: "Sedang Dicuci",
+    icon: "💧",
+    desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas).",
+  },
+  {
+    step: 5,
+    label: "Sedang Disetrika",
+    icon: "🔥",
+    desc: "Proses setrika / finishing.",
+  },
+  {
+    step: 6,
+    label: "Selesai Dicuci",
+    icon: "📦",
+    desc: "Pakaian selesai dicuci, siap dikirim.",
+  },
+  {
+    step: 7,
+    label: "Sedang Diantar",
+    icon: "🛵",
+    desc: "Kurir mengantar pakaian ke pelanggan.",
+  },
+  {
+    step: 8,
+    label: "Selesai",
+    icon: "✅",
+    desc: "Pesanan diterima pelanggan, transaksi selesai.",
+  },
 ];
 
 // Mapping sub-status ke super status

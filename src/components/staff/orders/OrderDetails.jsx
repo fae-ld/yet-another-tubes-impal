@@ -25,7 +25,9 @@ export function SectionCard({ title, subtitle, rightSlot, children }) {
       <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between gap-4">
         <div>
           <h2 className="text-base font-bold text-gray-900">{title}</h2>
-          {subtitle ? <p className="text-xs text-gray-500 mt-1">{subtitle}</p> : null}
+          {subtitle ? (
+            <p className="text-xs text-gray-500 mt-1">{subtitle}</p>
+          ) : null}
         </div>
         {rightSlot ? <div className="shrink-0">{rightSlot}</div> : null}
       </div>
@@ -63,7 +65,9 @@ export function StatPill({ label, value }) {
 export function renderStatusBadge(superStatus) {
   if (superStatus === "Done") return <Badge variant="green">Done</Badge>;
   if (superStatus === "Pending") return <Badge variant="yellow">Pending</Badge>;
-  if (superStatus === "In Progress") return <Badge variant="purple">In Progress</Badge>;
-  if (superStatus === "Cancelled") return <Badge variant="red">Cancelled</Badge>;
+  if (superStatus === "In Progress")
+    return <Badge variant="purple">In Progress</Badge>;
+  if (superStatus === "Cancelled")
+    return <Badge variant="red">Cancelled</Badge>;
   return <Badge variant="gray">Unknown</Badge>;
 }

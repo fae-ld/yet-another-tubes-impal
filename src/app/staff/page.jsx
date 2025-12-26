@@ -5,7 +5,14 @@ import Link from "next/link";
 import { useUser } from "@/contexts/UserContext";
 import StaffLoginForm from "@/components/staff/StaffLoginForm";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
-import { ClipboardList, Sparkles, Megaphone, Timer, CreditCard, BadgeCheck } from "lucide-react";
+import {
+  ClipboardList,
+  Sparkles,
+  Megaphone,
+  Timer,
+  CreditCard,
+  BadgeCheck,
+} from "lucide-react";
 
 export default function StaffPage() {
   const { user, loading } = useUser();
@@ -93,13 +100,15 @@ export default function StaffPage() {
               </h1>
 
               <p className="mt-2 text-gray-600 max-w-2xl">
-                Kelola pesanan, layanan, dan pengumuman dengan cepat & rapi dari satu tempat.
+                Kelola pesanan, layanan, dan pengumuman dengan cepat & rapi dari
+                satu tempat.
               </p>
 
               {/* Agenda hari ini (text, not card) */}
               <div className="mt-6">
-                <p className="text-sm font-bold text-gray-900">Agenda hari ini</p>
-            
+                <p className="text-sm font-bold text-gray-900">
+                  Agenda hari ini
+                </p>
 
                 <ul className="mt-4 space-y-2">
                   <li className="flex items-start gap-3">
@@ -179,9 +188,7 @@ export default function StaffPage() {
                   <Sparkles size={20} />
                 </div>
                 <p className="mt-3 font-bold text-gray-900">Kelola Layanan</p>
-                <p className="text-sm text-gray-600">
-                  Atur layanan & harga.
-                </p>
+                <p className="text-sm text-gray-600">Atur layanan & harga.</p>
               </Link>
 
               <Link

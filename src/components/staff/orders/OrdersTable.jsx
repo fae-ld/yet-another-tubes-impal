@@ -29,16 +29,16 @@ export default function OrdersTable({ orders }) {
 
   const payBadge = (payStatus) => {
     const s = (payStatus || "").toLowerCase();
-    if (s === "paid" || s === "lunas") return <Badge variant="green">Paid</Badge>;
-    if (s === "unpaid" || s === "belum lunas") return <Badge variant="red">Unpaid</Badge>;
+    if (s === "paid" || s === "lunas")
+      return <Badge variant="green">Paid</Badge>;
+    if (s === "unpaid" || s === "belum lunas")
+      return <Badge variant="red">Unpaid</Badge>;
     return <Badge variant="outline">{payStatus ?? "-"}</Badge>;
   };
 
-  const formatRp = (n) =>
-    n != null ? Number(n).toLocaleString("id-ID") : "-";
+  const formatRp = (n) => (n != null ? Number(n).toLocaleString("id-ID") : "-");
 
-  const formatDateTime = (d) =>
-    d ? new Date(d).toLocaleString() : "-";
+  const formatDateTime = (d) => (d ? new Date(d).toLocaleString() : "-");
 
   return (
     <>
@@ -47,9 +47,13 @@ export default function OrdersTable({ orders }) {
         <div className="rounded-2xl bg-white shadow-sm ring-1 ring-gray-200 overflow-hidden">
           <div className="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
             <div>
-              <h3 className="text-base font-bold text-gray-900">Daftar Pesanan</h3>
+              <h3 className="text-base font-bold text-gray-900">
+                Daftar Pesanan
+              </h3>
               <p className="text-xs text-gray-500 mt-1">
-                Total: <span className="font-semibold">{orders?.length ?? 0}</span> pesanan
+                Total:{" "}
+                <span className="font-semibold">{orders?.length ?? 0}</span>{" "}
+                pesanan
               </p>
             </div>
           </div>
@@ -94,7 +98,10 @@ export default function OrdersTable({ orders }) {
               <TableBody>
                 {orders.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={9} className="text-center py-10 text-gray-500">
+                    <TableCell
+                      colSpan={9}
+                      className="text-center py-10 text-gray-500"
+                    >
                       Tidak ada pesanan.
                     </TableCell>
                   </TableRow>
@@ -136,22 +143,32 @@ export default function OrdersTable({ orders }) {
                           <span>
                             {o.estimasi_berat ?? "-"}
                             {o.estimasi_berat != null ? (
-                              <span className="text-xs text-gray-500 ml-1">kg</span>
+                              <span className="text-xs text-gray-500 ml-1">
+                                kg
+                              </span>
                             ) : null}
-                            <span className="text-xs text-gray-400 ml-2">est</span>
+                            <span className="text-xs text-gray-400 ml-2">
+                              est
+                            </span>
                           </span>
                           <span className="text-xs text-gray-600">
                             {o.berat_aktual ?? "-"}
                             {o.berat_aktual != null ? (
-                              <span className="text-xs text-gray-500 ml-1">kg</span>
+                              <span className="text-xs text-gray-500 ml-1">
+                                kg
+                              </span>
                             ) : null}
-                            <span className="text-xs text-gray-400 ml-2">akt</span>
+                            <span className="text-xs text-gray-400 ml-2">
+                              akt
+                            </span>
                           </span>
                         </div>
                       </TableCell>
 
                       <TableCell className="text-right">
-                        <Badge variant="outline">{o.metode_pembayaran ?? "-"}</Badge>
+                        <Badge variant="outline">
+                          {o.metode_pembayaran ?? "-"}
+                        </Badge>
                       </TableCell>
 
                       <TableCell className="text-right font-semibold tabular-nums text-gray-900">
@@ -165,7 +182,9 @@ export default function OrdersTable({ orders }) {
                           </Badge>
 
                           {/* kalau kolom bayar disembunyikan, tampilkan kecil di bawah status */}
-                          <div className="lg:hidden">{payBadge(o.status_pembayaran)}</div>
+                          <div className="lg:hidden">
+                            {payBadge(o.status_pembayaran)}
+                          </div>
                         </div>
                       </TableCell>
 
@@ -211,7 +230,9 @@ export default function OrdersTable({ orders }) {
         {orders.length === 0 && (
           <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 p-6 text-center">
             <p className="text-gray-700 font-semibold">Tidak ada pesanan</p>
-            <p className="text-sm text-gray-500 mt-1">Pesanan akan muncul di sini.</p>
+            <p className="text-sm text-gray-500 mt-1">
+              Pesanan akan muncul di sini.
+            </p>
           </div>
         )}
 
@@ -226,7 +247,8 @@ export default function OrdersTable({ orders }) {
                   #{o.id_pesanan}
                 </div>
                 <div className="text-xs text-gray-500 truncate">
-                  Pelanggan: <span className="font-medium">{o.id_pelanggan}</span>
+                  Pelanggan:{" "}
+                  <span className="font-medium">{o.id_pelanggan}</span>
                 </div>
               </div>
 
@@ -255,7 +277,9 @@ export default function OrdersTable({ orders }) {
                   <p className="mt-1 text-sm font-bold text-gray-900 tabular-nums">
                     {o.estimasi_berat ?? "-"}{" "}
                     {o.estimasi_berat != null ? (
-                      <span className="text-xs text-gray-500 font-semibold">kg</span>
+                      <span className="text-xs text-gray-500 font-semibold">
+                        kg
+                      </span>
                     ) : null}
                   </p>
                 </div>
@@ -267,7 +291,9 @@ export default function OrdersTable({ orders }) {
                   <p className="mt-1 text-sm font-bold text-gray-900 tabular-nums">
                     {o.berat_aktual ?? "-"}{" "}
                     {o.berat_aktual != null ? (
-                      <span className="text-xs text-gray-500 font-semibold">kg</span>
+                      <span className="text-xs text-gray-500 font-semibold">
+                        kg
+                      </span>
                     ) : null}
                   </p>
                 </div>
@@ -299,4 +325,3 @@ export default function OrdersTable({ orders }) {
     </>
   );
 }
-

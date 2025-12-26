@@ -6,10 +6,21 @@ import { supabase } from "@/lib/supabase";
 import { ArrowLeft } from "lucide-react";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 import ReviewCard from "@/components/ReviewCard";
-import { insertNotification } from '@/utils/notifications';
+import { insertNotification } from "@/utils/notifications";
 import StaffDashboardLoading from "@/components/staff/loadings/StaffDashboardLoading";
-import { ORDER_SUBSTEPS_COD, ORDER_SUBSTEPS_QRIS, getStepColor, getSuperStatus } from "@/utils/staff/orderdetails";
-import { Badge, SectionCard, InfoRow, StatPill, renderStatusBadge } from "@/components/staff/orders/OrderDetails";
+import {
+  ORDER_SUBSTEPS_COD,
+  ORDER_SUBSTEPS_QRIS,
+  getStepColor,
+  getSuperStatus,
+} from "@/utils/staff/orderdetails";
+import {
+  Badge,
+  SectionCard,
+  InfoRow,
+  StatPill,
+  renderStatusBadge,
+} from "@/components/staff/orders/OrderDetails";
 
 export default function OrderDetailPage() {
   const router = useRouter();
@@ -40,7 +51,8 @@ export default function OrderDetailPage() {
         if (orderError) throw orderError;
 
         if (orderData) {
-          if(orderData.metode_pembayaran == "QRIS") setORDER_SUBSTEPS(ORDER_SUBSTEPS_QRIS);
+          if (orderData.metode_pembayaran == "QRIS")
+            setORDER_SUBSTEPS(ORDER_SUBSTEPS_QRIS);
 
           const { data: serviceData, error: serviceError } = await supabase
             .from("layanan")
@@ -128,14 +140,19 @@ export default function OrderDetailPage() {
         ).filter((step) => !existingStatuses.includes(step.label));
 
         // Kalau berat aktual belum ada dan mau pass verifikasi berat maka deny
-        if(order.berat_aktual === null && clickedIndex > 2) {
+        if (order.berat_aktual === null && clickedIndex > 2) {
           alert("Set berat aktual dulu lah 😡😡💢💢💢");
           return;
         }
 
         // Kalau belum lunas dan mau pass menunggu pembayaran maka deny
-        if(!isCOD && clickedIndex > 3 && order.status_pembayaran !== "Paid" && order.status_pesanan === "Menunggu Pembayaran") {
-          alert("Bro pelanggan nya belum bayar 🤬💢")
+        if (
+          !isCOD &&
+          clickedIndex > 3 &&
+          order.status_pembayaran !== "Paid" &&
+          order.status_pesanan === "Menunggu Pembayaran"
+        ) {
+          alert("Bro pelanggan nya belum bayar 🤬💢");
           return;
         }
 
@@ -157,7 +174,7 @@ export default function OrderDetailPage() {
         }
 
         // Kalau mau update ke selesai tapi belum konfirmasi pembayaran maka deny
-        if(clickedIndex == 8 && order.status_pembayaran !== "Paid") {
+        if (clickedIndex == 8 && order.status_pembayaran !== "Paid") {
           alert("Konfirmasi pembayaran dulu yah");
           return;
         }
@@ -247,65 +264,69 @@ export default function OrderDetailPage() {
   };
 
   const handleCancelOrder = async () => {
-  // 1. Konfirmasi agar tidak sengaja terpencet
-  const confirmCancel = confirm("Apakah Anda yakin ingin membatalkan pesanan ini? Aksi ini tidak dapat dibatalkan.");
-  if (!confirmCancel) return;
+    // 1. Konfirmasi agar tidak sengaja terpencet
+    const confirmCancel = confirm(
+      "Apakah Anda yakin ingin membatalkan pesanan ini? Aksi ini tidak dapat dibatalkan.",
+    );
+    if (!confirmCancel) return;
 
-  const cancelTime = new Date().toISOString();
+    const cancelTime = new Date().toISOString();
 
-  try {
-    setLoading(true);
+    try {
+      setLoading(true);
 
-    // 2. Update tabel pesanan
-    const { error: updateError } = await supabase
-      .from("pesanan")
-      .update({ 
+      // 2. Update tabel pesanan
+      const { error: updateError } = await supabase
+        .from("pesanan")
+        .update({
+          cancelled_at: cancelTime,
+          status_pesanan: "Dibatalkan",
+        })
+        .eq("id_pesanan", orderId);
+
+      if (updateError) throw updateError;
+
+      // 3. Masukkan ke riwayat status agar muncul di timeline
+      const { error: historyError } = await supabase
+        .from("riwayat_status_pesanan")
+        .insert([
+          {
+            id_pesanan: orderId,
+            status: "Dibatalkan",
+            deskripsi: "Pesanan telah dibatalkan oleh pihak laundry/pelanggan.",
+            waktu: cancelTime,
+          },
+        ]);
+
+      if (historyError) throw historyError;
+
+      // 4. Update State lokal agar UI langsung berubah
+      setOrder((prev) => ({
+        ...prev,
         cancelled_at: cancelTime,
-        status_pesanan: "Dibatalkan" 
-      })
-      .eq("id_pesanan", orderId);
+        status_pesanan: "Dibatalkan",
+        riwayat_status_pesanan: [
+          {
+            status: "Dibatalkan",
+            waktu: cancelTime,
+            deskripsi: "Pesanan telah dibatalkan.",
+          },
+          ...prev.riwayat_status_pesanan,
+        ],
+      }));
 
-    if (updateError) throw updateError;
-
-    // 3. Masukkan ke riwayat status agar muncul di timeline
-    const { error: historyError } = await supabase
-      .from("riwayat_status_pesanan")
-      .insert([{
-        id_pesanan: orderId,
-        status: "Dibatalkan",
-        deskripsi: "Pesanan telah dibatalkan oleh pihak laundry/pelanggan.",
-        waktu: cancelTime
-      }]);
-
-    if (historyError) throw historyError;
-
-    // 4. Update State lokal agar UI langsung berubah
-    setOrder((prev) => ({
-      ...prev,
-      cancelled_at: cancelTime,
-      status_pesanan: "Dibatalkan",
-      riwayat_status_pesanan: [
-        { status: "Dibatalkan", waktu: cancelTime, deskripsi: "Pesanan telah dibatalkan." },
-        ...prev.riwayat_status_pesanan,
-      ]
-    }));
-
-    alert("Pesanan berhasil dibatalkan.");
-  } catch (err) {
-    console.error("Gagal membatalkan pesanan:", err);
-    alert("Terjadi kesalahan saat membatalkan pesanan.");
-  } finally {
-    setLoading(false);
-  }
-};
+      alert("Pesanan berhasil dibatalkan.");
+    } catch (err) {
+      console.error("Gagal membatalkan pesanan:", err);
+      alert("Terjadi kesalahan saat membatalkan pesanan.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ====== EARLY RETURNS ======
   if (loading) {
-    return (
-      <StaffDashboardLayout>
-        
-      </StaffDashboardLayout>
-    );
+    return <StaffDashboardLayout></StaffDashboardLayout>;
   }
 
   if (error) {
@@ -319,7 +340,9 @@ export default function OrderDetailPage() {
   if (!order) {
     return (
       <StaffDashboardLayout>
-        <div className="p-6 text-center text-gray-600">Order tidak ditemukan</div>
+        <div className="p-6 text-center text-gray-600">
+          Order tidak ditemukan
+        </div>
       </StaffDashboardLayout>
     );
   }
@@ -376,7 +399,9 @@ export default function OrderDetailPage() {
                   <span className="text-sm font-semibold">Kembali</span>
                 </button>
 
-                <div className="md:hidden">{renderStatusBadge(superStatus)}</div>
+                <div className="md:hidden">
+                  {renderStatusBadge(superStatus)}
+                </div>
               </div>
 
               <div className="flex-1">
@@ -387,7 +412,7 @@ export default function OrderDetailPage() {
                 <p className="text-sm text-gray-500 mt-1">
                   Status saat ini:{" "}
                   <span className="font-semibold text-gray-800">
-                    {order.cancelled_at ? 'Dibatalkan' : currentStatusLabel}
+                    {order.cancelled_at ? "Dibatalkan" : currentStatusLabel}
                   </span>
                 </p>
               </div>
@@ -414,26 +439,33 @@ export default function OrderDetailPage() {
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
-                <StatPill label="Status Pesanan" value={currentStatusLabel || "-"} />
-                <StatPill label="Pembayaran" value={order.status_pembayaran ?? "-"} />
+                <StatPill
+                  label="Status Pesanan"
+                  value={currentStatusLabel || "-"}
+                />
+                <StatPill
+                  label="Pembayaran"
+                  value={order.status_pembayaran ?? "-"}
+                />
                 <StatPill label="Total" value={totalText} />
               </div>
 
-            {!order.cancelled_at && order.status_pesanan !== "Selesai" && (
-              <button
-                onClick={handleCancelOrder}
-                className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-md transition duration-200 flex items-center justify-center gap-2"
-              >
-                <span>❌</span> Batalkan Pesanan
-              </button>
-            )}
+              {!order.cancelled_at && order.status_pesanan !== "Selesai" && (
+                <button
+                  onClick={handleCancelOrder}
+                  className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-md transition duration-200 flex items-center justify-center gap-2"
+                >
+                  <span>❌</span> Batalkan Pesanan
+                </button>
+              )}
 
-            {/* indikator jika sudah dibatalkan */}
-            {order.cancelled_at && (
-              <div className="mt-4 p-4 bg-gray-100 border-l-4 border-red-500 text-red-700 italic">
-                Pesanan ini telah dibatalkan pada: {new Date(order.cancelled_at).toLocaleString('id-ID')}
-              </div>
-            )}
+              {/* indikator jika sudah dibatalkan */}
+              {order.cancelled_at && (
+                <div className="mt-4 p-4 bg-gray-100 border-l-4 border-red-500 text-red-700 italic">
+                  Pesanan ini telah dibatalkan pada:{" "}
+                  {new Date(order.cancelled_at).toLocaleString("id-ID")}
+                </div>
+              )}
             </div>
           </div>
 
@@ -445,16 +477,24 @@ export default function OrderDetailPage() {
                 subtitle="Data identitas pelanggan terkait pesanan."
               >
                 <div className="space-y-3">
-                  <InfoRow label="Nama" value={order.pelanggan?.nama ?? "-"} emphasize />
+                  <InfoRow
+                    label="Nama"
+                    value={order.pelanggan?.nama ?? "-"}
+                    emphasize
+                  />
                   <InfoRow label="ID Pelanggan" value={order.id_pelanggan} />
-                  <InfoRow label="Email" value={order.pelanggan?.email ?? "-"} />
-                  <InfoRow label="Telepon" value={order.pelanggan?.telepon ?? "-"} />
+                  <InfoRow
+                    label="Email"
+                    value={order.pelanggan?.email ?? "-"}
+                  />
+                  <InfoRow
+                    label="Telepon"
+                    value={order.pelanggan?.telepon ?? "-"}
+                  />
                 </div>
               </SectionCard>
 
-              <SectionCard
-                title="Ulasan"
-              >
+              <SectionCard title="Ulasan">
                 {existingReview ? (
                   <ReviewCard
                     review={{
@@ -465,7 +505,9 @@ export default function OrderDetailPage() {
                   />
                 ) : (
                   <div className="rounded-2xl bg-gray-50 ring-1 ring-gray-200 p-5 text-center">
-                    <p className="font-semibold text-gray-800">Belum ada ulasan</p>
+                    <p className="font-semibold text-gray-800">
+                      Belum ada ulasan
+                    </p>
                     <p className="text-sm text-gray-500 mt-1">╰(*°▽°*)╯</p>
                   </div>
                 )}
@@ -479,16 +521,25 @@ export default function OrderDetailPage() {
                 rightSlot={
                   <div className="flex items-center gap-2">
                     {paidBadge}
-                    <Badge variant="blue">{order.metode_pembayaran ?? "-"}</Badge>
+                    <Badge variant="blue">
+                      {order.metode_pembayaran ?? "-"}
+                    </Badge>
                   </div>
                 }
               >
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
-                  <InfoRow label="Jenis Layanan" value={order.jenis_layanan ?? "-"} />
+                  <InfoRow
+                    label="Jenis Layanan"
+                    value={order.jenis_layanan ?? "-"}
+                  />
                   <InfoRow label="Harga" value={hargaPerKgText} />
                   <InfoRow
                     label="Estimasi Berat"
-                    value={order.estimasi_berat != null ? `${order.estimasi_berat} kg` : "-"}
+                    value={
+                      order.estimasi_berat != null
+                        ? `${order.estimasi_berat} kg`
+                        : "-"
+                    }
                   />
 
                   <div className="flex items-start justify-between gap-6">
@@ -516,14 +567,17 @@ export default function OrderDetailPage() {
                         className="w-28 rounded-xl px-3 py-2 text-right text-sm font-semibold
                                    bg-white ring-1 ring-gray-200 shadow-sm
                                    focus:outline-none focus:ring-2 focus:ring-purple-200"
-                                   disabled={order.cancelled_at !== null}
+                        disabled={order.cancelled_at !== null}
                       />
                       <span className="text-sm text-gray-500">kg</span>
                     </div>
                   </div>
 
                   <InfoRow label="Total Biaya" value={totalText} emphasize />
-                  <InfoRow label="Status Pesanan" value={currentStatusLabel || "-"} />
+                  <InfoRow
+                    label="Status Pesanan"
+                    value={currentStatusLabel || "-"}
+                  />
                   <InfoRow label="Jadwal Selesai" value={jadwalText} />
                   <div className="hidden md:block" />
                 </div>
@@ -538,7 +592,8 @@ export default function OrderDetailPage() {
                               Pesanan belum lunas
                             </p>
                             <p className="text-xs text-red-600 mt-1">
-                              Konfirmasi manual hanya jika pembayaran sudah diterima.
+                              Konfirmasi manual hanya jika pembayaran sudah
+                              diterima.
                             </p>
                           </div>
                           <Badge variant="red">Action Required</Badge>
@@ -563,9 +618,12 @@ export default function OrderDetailPage() {
                                 .from("pesanan")
                                 .update({
                                   status_pembayaran: "Paid",
-                                  tgl_pembayaran_lunas: new Date().toISOString(),
+                                  tgl_pembayaran_lunas:
+                                    new Date().toISOString(),
                                   metode_pembayaran:
-                                    order.metode_pembayaran === "COD" ? "COD" : "QRIS",
+                                    order.metode_pembayaran === "COD"
+                                      ? "COD"
+                                      : "QRIS",
                                   jumlah_dibayar: order.total_biaya_final,
                                 })
                                 .eq("id_pesanan", order.id_pesanan);
@@ -598,7 +656,9 @@ export default function OrderDetailPage() {
                             })
                             .eq("id_pesanan", order.id_pesanan);
                           if (error) throw error;
-                          alert("Berat aktual & total biaya berhasil diupdate!");
+                          alert(
+                            "Berat aktual & total biaya berhasil diupdate!",
+                          );
                         } catch (err) {
                           console.error(err);
                           alert("Gagal update berat aktual");
@@ -630,14 +690,18 @@ export default function OrderDetailPage() {
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Badge variant="gray">
-                      Step {Math.min(ORDER_SUBSTEPS.length, currentSubIndex + 1)} /{" "}
+                      Step{" "}
+                      {Math.min(ORDER_SUBSTEPS.length, currentSubIndex + 1)} /{" "}
                       {ORDER_SUBSTEPS.length}
                     </Badge>
                     <Badge variant="blue">{currentStatusLabel || "-"}</Badge>
                   </div>
 
                   <div className="text-sm text-gray-500">
-                    Klik <span className="font-semibold text-purple-700">Ubah Status</span>{" "}
+                    Klik{" "}
+                    <span className="font-semibold text-purple-700">
+                      Ubah Status
+                    </span>{" "}
                     untuk melihat semua step.
                   </div>
                 </div>
@@ -667,7 +731,9 @@ export default function OrderDetailPage() {
                         >
                           <div className="flex items-start justify-between gap-4">
                             <div className="flex items-start gap-3">
-                              <div className="text-2xl leading-none">{step.icon}</div>
+                              <div className="text-2xl leading-none">
+                                {step.icon}
+                              </div>
                               <div>
                                 <div className="flex flex-wrap items-center gap-2">
                                   <p className="font-extrabold text-gray-900">
@@ -688,7 +754,9 @@ export default function OrderDetailPage() {
 
                                 {completed && stepHistory?.waktu && (
                                   <p className="text-xs text-gray-500 mt-2">
-                                    {new Date(stepHistory.waktu).toLocaleString()}
+                                    {new Date(
+                                      stepHistory.waktu,
+                                    ).toLocaleString()}
                                   </p>
                                 )}
                               </div>

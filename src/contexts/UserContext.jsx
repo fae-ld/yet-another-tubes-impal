@@ -59,7 +59,9 @@ export const UserProvider = ({ children }) => {
     // --- 1. Ambil user saat komponen pertama kali dimuat ---
     const getInitialUser = async () => {
       try {
-        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        const {
+          data: { user: currentUser },
+        } = await supabase.auth.getUser();
 
         if (currentUser) {
           const namaDariDb = await insertPelanggan(currentUser);
