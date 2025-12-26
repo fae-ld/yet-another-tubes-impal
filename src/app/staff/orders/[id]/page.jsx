@@ -27,6 +27,7 @@ export default function OrderDetailPage() {
 
   const { id: orderId } = useParams();
   const [order, setOrder] = useState(null);
+  const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [existingReview, setExistingReview] = useState(null);
@@ -64,6 +65,20 @@ export default function OrderDetailPage() {
           setService(serviceData);
         }
 
+        let result;
+        try {
+          const url = `/api/user?uuid=${orderData.id_pelanggan}`;
+          const response = await fetch(url, {
+            method: "GET",
+          });
+          result = await response.json();
+          if (!result.ok) {
+            throw new Error(result.error || "Gagal mengambil data user");
+          }
+        } catch (error) {
+          console.error("Error:", error.message);
+        }
+
         const { data: pelangganData, error: pelangganError } = await supabase
           .from("pelanggan")
           .select("nama")
@@ -80,7 +95,12 @@ export default function OrderDetailPage() {
 
         setOrder({
           ...orderData,
-          pelanggan: pelangganData,
+          pelanggan: {
+            ...customer,
+            ...{
+              email: result.user.email,
+            },
+          },
           riwayat_status_pesanan: statusData,
           latestStatus: statusData?.[0] || null,
         });
