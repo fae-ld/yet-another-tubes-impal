@@ -103,9 +103,22 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## 📸 Screenshots
 
-![Dashboard](public/images/gambar-1.png)
+Compare the user experience between the customer service selection and the administrative control panel.
 
-_Add more screenshots as needed to showcase key features_
+<div align="center">
+  
+  ### 🛍️ Customer Service Selection
+  *User picks their desired laundry service*
+  <img src="public/images/services.jpeg" width="80%" alt="Customer Services Selection" />
+
+  <br/>
+
+### 🛠️ Staff Dashboard
+
+_Admin manages orders, weights, and statuses_
+<img src="public/images/staff-dashboard.jpeg" width="80%" alt="Staff Dashboard" />
+
+</div>
 
 ---
 
