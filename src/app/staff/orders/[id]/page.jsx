@@ -98,6 +98,11 @@ export default function OrderDetailPage() {
       return;
     }
 
+    if (order.cancelled_at) {
+      alert("Pesanan ini sudah dibatalkan dan tidak dapat diubah lagi.");
+      return;
+    }
+
     const existingStatuses =
       order.riwayat_status_pesanan?.map((s) => s.status) || [];
     const clickedIndex = ORDER_SUBSTEPS.findIndex(
@@ -241,6 +246,59 @@ export default function OrderDetailPage() {
     }
   };
 
+  const handleCancelOrder = async () => {
+  // 1. Konfirmasi agar tidak sengaja terpencet
+  const confirmCancel = confirm("Apakah Anda yakin ingin membatalkan pesanan ini? Aksi ini tidak dapat dibatalkan.");
+  if (!confirmCancel) return;
+
+  const cancelTime = new Date().toISOString();
+
+  try {
+    setLoading(true);
+
+    // 2. Update tabel pesanan
+    const { error: updateError } = await supabase
+      .from("pesanan")
+      .update({ 
+        cancelled_at: cancelTime,
+        status_pesanan: "Dibatalkan" 
+      })
+      .eq("id_pesanan", orderId);
+
+    if (updateError) throw updateError;
+
+    // 3. Masukkan ke riwayat status agar muncul di timeline
+    const { error: historyError } = await supabase
+      .from("riwayat_status_pesanan")
+      .insert([{
+        id_pesanan: orderId,
+        status: "Dibatalkan",
+        deskripsi: "Pesanan telah dibatalkan oleh pihak laundry/pelanggan.",
+        waktu: cancelTime
+      }]);
+
+    if (historyError) throw historyError;
+
+    // 4. Update State lokal agar UI langsung berubah
+    setOrder((prev) => ({
+      ...prev,
+      cancelled_at: cancelTime,
+      status_pesanan: "Dibatalkan",
+      riwayat_status_pesanan: [
+        { status: "Dibatalkan", waktu: cancelTime, deskripsi: "Pesanan telah dibatalkan." },
+        ...prev.riwayat_status_pesanan,
+      ]
+    }));
+
+    alert("Pesanan berhasil dibatalkan.");
+  } catch (err) {
+    console.error("Gagal membatalkan pesanan:", err);
+    alert("Terjadi kesalahan saat membatalkan pesanan.");
+  } finally {
+    setLoading(false);
+  }
+};
+
   // ====== EARLY RETURNS ======
   if (loading) {
     return (
@@ -329,7 +387,7 @@ export default function OrderDetailPage() {
                 <p className="text-sm text-gray-500 mt-1">
                   Status saat ini:{" "}
                   <span className="font-semibold text-gray-800">
-                    {currentStatusLabel || "-"}
+                    {order.cancelled_at ? 'Dibatalkan' : currentStatusLabel}
                   </span>
                 </p>
               </div>
@@ -360,6 +418,22 @@ export default function OrderDetailPage() {
                 <StatPill label="Pembayaran" value={order.status_pembayaran ?? "-"} />
                 <StatPill label="Total" value={totalText} />
               </div>
+
+            {!order.cancelled_at && order.status_pesanan !== "Selesai" && (
+              <button
+                onClick={handleCancelOrder}
+                className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-md transition duration-200 flex items-center justify-center gap-2"
+              >
+                <span>❌</span> Batalkan Pesanan
+              </button>
+            )}
+
+            {/* indikator jika sudah dibatalkan */}
+            {order.cancelled_at && (
+              <div className="mt-4 p-4 bg-gray-100 border-l-4 border-red-500 text-red-700 italic">
+                Pesanan ini telah dibatalkan pada: {new Date(order.cancelled_at).toLocaleString('id-ID')}
+              </div>
+            )}
             </div>
           </div>
 
@@ -442,6 +516,7 @@ export default function OrderDetailPage() {
                         className="w-28 rounded-xl px-3 py-2 text-right text-sm font-semibold
                                    bg-white ring-1 ring-gray-200 shadow-sm
                                    focus:outline-none focus:ring-2 focus:ring-purple-200"
+                                   disabled={order.cancelled_at !== null}
                       />
                       <span className="text-sm text-gray-500">kg</span>
                     </div>
