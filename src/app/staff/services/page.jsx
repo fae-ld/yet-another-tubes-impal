@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from "react";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
-import { Plus, Edit, Archive, Check, Loader2, Undo2, X } from "lucide-react";
+import { Edit, Archive, Loader2, Undo2, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -18,8 +18,46 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-// --- Komponen Form (Create/Edit Inline) ---
-const ServiceForm = ({ initialData, onCancel, onSuccess }) => {
+// =========================================================
+// UTILITY FUNCTIONS
+// =========================================================
+const showToast = (title, description, variant = "default") => {
+  toast({
+    title,
+    description,
+    variant,
+    className: variant === "success" ? "bg-green-500 text-white" : undefined,
+  });
+};
+
+const prepareServiceData = (formData) => ({
+  jenis_layanan: formData.jenis_layanan,
+  harga_per_kg: parseFloat(formData.harga_per_kg),
+  deskripsi: formData.deskripsi,
+});
+
+// =========================================================
+// SERVICE OPERATIONS
+// =========================================================
+const createService = async (data) => {
+  return await supabase.from("layanan").insert([data]);
+};
+
+const updateService = async (id, data) => {
+  return await supabase.from("layanan").update(data).eq("id_layanan", id);
+};
+
+const toggleArchiveService = async (serviceId, newStatus) => {
+  return await supabase
+    .from("layanan")
+    .update({ is_archived: newStatus })
+    .eq("id_layanan", serviceId);
+};
+
+// =========================================================
+// CUSTOM HOOKS
+// =========================================================
+const useServiceForm = (initialData, onSuccess) => {
   const [formData, setFormData] = useState({
     jenis_layanan: "",
     harga_per_kg: "",
@@ -33,7 +71,6 @@ const ServiceForm = ({ initialData, onCancel, onSuccess }) => {
     if (initialData) {
       setFormData({
         jenis_layanan: initialData.jenis_layanan || "",
-        // Pastikan harga adalah string untuk input, tapi numerik untuk data
         harga_per_kg: String(initialData.harga_per_kg) || "",
         deskripsi: initialData.deskripsi || "",
       });
@@ -51,51 +88,84 @@ const ServiceForm = ({ initialData, onCancel, onSuccess }) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const resetForm = () => {
+    setFormData({ jenis_layanan: "", harga_per_kg: "", deskripsi: "" });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
 
-    const dataToSubmit = {
-      jenis_layanan: formData.jenis_layanan,
-      harga_per_kg: parseFloat(formData.harga_per_kg),
-      deskripsi: formData.deskripsi,
-    };
-
-    let result;
-
-    if (isEdit) {
-      // Edit / Update
-      result = await supabase
-        .from("layanan")
-        .update(dataToSubmit)
-        .eq("id_layanan", initialData.id_layanan);
-    } else {
-      // Create / Insert
-      result = await supabase.from("layanan").insert([dataToSubmit]);
-    }
+    const dataToSubmit = prepareServiceData(formData);
+    const result = isEdit
+      ? await updateService(initialData.id_layanan, dataToSubmit)
+      : await createService(dataToSubmit);
 
     setLoading(false);
 
     if (result.error) {
       console.error("Error submit layanan:", result.error);
-      toast({
-        title: "Gagal Menyimpan",
-        description: `Terjadi kesalahan: ${result.error.message}`,
-        variant: "destructive",
-      });
+      showToast(
+        "Gagal Menyimpan",
+        `Terjadi kesalahan: ${result.error.message}`,
+        "destructive",
+      );
     } else {
-      toast({
-        title: "Berhasil",
-        description: `Layanan berhasil ${isEdit ? "diperbarui" : "dibuat"}.`,
-        className: "bg-green-500 text-white",
-      });
+      showToast(
+        "Berhasil",
+        `Layanan berhasil ${isEdit ? "diperbarui" : "dibuat"}.`,
+        "success",
+      );
       onSuccess();
-      // Reset form setelah sukses
-      if (!isEdit) {
-        setFormData({ jenis_layanan: "", harga_per_kg: "", deskripsi: "" });
-      }
+      if (!isEdit) resetForm();
     }
   };
+
+  return {
+    formData,
+    loading,
+    isEdit,
+    handleChange,
+    handleSubmit,
+  };
+};
+
+const useServices = (userLoading) => {
+  const [services, setServices] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const fetchServices = async () => {
+    setIsLoading(true);
+    const { data, error } = await supabase
+      .from("layanan")
+      .select("*")
+      .order("id_layanan", { ascending: false });
+
+    if (error) {
+      console.error("Error fetching services:", error);
+      showToast("Gagal memuat", "Gagal memuat daftar layanan.", "destructive");
+      setServices([]);
+    } else {
+      setServices(data || []);
+    }
+    setIsLoading(false);
+  };
+
+  useEffect(() => {
+    if (!userLoading) {
+      fetchServices();
+    }
+  }, [userLoading]);
+
+  return { services, isLoading, fetchServices };
+};
+
+// =========================================================
+// COMPONENTS
+// =========================================================
+const ServiceForm = ({ initialData, onCancel, onSuccess }) => {
+  const { formData, loading, isEdit, handleChange, handleSubmit } =
+    useServiceForm(initialData, onSuccess);
 
   return (
     <div className="bg-white p-6 rounded-xl shadow-lg border border-purple-100 mb-8">
@@ -159,66 +229,151 @@ const ServiceForm = ({ initialData, onCancel, onSuccess }) => {
   );
 };
 
-// --- Komponen Utama Halaman Layanan ---
+const ServiceStatusBadge = ({ isArchived }) => (
+  <span
+    className={`px-3 py-1 text-xs font-semibold rounded-full ${
+      isArchived ? "bg-red-100 text-red-800" : "bg-green-100 text-green-800"
+    }`}
+  >
+    {isArchived ? "Diarsipkan" : "Aktif"}
+  </span>
+);
+
+const ServiceActionButtons = ({
+  service,
+  editingService,
+  onEdit,
+  onArchive,
+}) => {
+  const isDisabled =
+    editingService !== null && editingService.id_layanan !== service.id_layanan;
+  const isArchived = service.is_archived;
+
+  return (
+    <div className="space-x-2 flex justify-center">
+      <Button
+        size="sm"
+        variant="outline"
+        onClick={() => onEdit(service)}
+        title="Edit Layanan"
+        disabled={isDisabled}
+      >
+        <Edit className="h-4 w-4" />
+      </Button>
+
+      <Button
+        size="sm"
+        variant={isArchived ? "success" : "destructive"}
+        onClick={() => onArchive(service)}
+        title={isArchived ? "Pulihkan Layanan" : "Arsipkan Layanan"}
+        disabled={editingService !== null}
+      >
+        {isArchived ? (
+          <Undo2 className="h-4 w-4" />
+        ) : (
+          <Archive className="h-4 w-4" />
+        )}
+      </Button>
+    </div>
+  );
+};
+
+const getRowClassName = (service, editingService) => {
+  if (service.is_archived) return "bg-red-50/50";
+  if (editingService?.id_layanan === service.id_layanan)
+    return "bg-yellow-50/70";
+  return "";
+};
+
+const ServiceTableRow = ({ service, editingService, onEdit, onArchive }) => (
+  <TableRow className={getRowClassName(service, editingService)}>
+    <TableCell className="font-medium">{service.id_layanan}</TableCell>
+    <TableCell>{service.jenis_layanan}</TableCell>
+    <TableCell>Rp{service.harga_per_kg.toLocaleString("id-ID")}</TableCell>
+    <TableCell className="text-sm text-gray-600">
+      {service.deskripsi?.split("|").slice(0, 1).join("") || "-"}
+    </TableCell>
+    <TableCell className="text-center">
+      <ServiceStatusBadge isArchived={service.is_archived} />
+    </TableCell>
+    <TableCell>
+      <ServiceActionButtons
+        service={service}
+        editingService={editingService}
+        onEdit={onEdit}
+        onArchive={onArchive}
+      />
+    </TableCell>
+  </TableRow>
+);
+
+const ServicesTable = ({ services, editingService, onEdit, onArchive }) => (
+  <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-8">
+    <Table>
+      <TableHeader className="bg-gray-100">
+        <TableRow>
+          <TableHead className="w-[50px]">ID</TableHead>
+          <TableHead>Nama Layanan</TableHead>
+          <TableHead>Harga/Kg</TableHead>
+          <TableHead>Deskripsi</TableHead>
+          <TableHead className="text-center">Status</TableHead>
+          <TableHead className="text-center w-[150px]">Aksi</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {services.length === 0 ? (
+          <TableRow>
+            <TableCell colSpan={6} className="h-24 text-center text-gray-500">
+              Belum ada data layanan.
+            </TableCell>
+          </TableRow>
+        ) : (
+          services.map((service) => (
+            <ServiceTableRow
+              key={service.id_layanan}
+              service={service}
+              editingService={editingService}
+              onEdit={onEdit}
+              onArchive={onArchive}
+            />
+          ))
+        )}
+      </TableBody>
+    </Table>
+  </div>
+);
+
+// =========================================================
+// MAIN COMPONENT
+// =========================================================
 export default function StaffServicesPage() {
   const { user, loading: userLoading } = useUser();
-
-  const [services, setServices] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  // State untuk mengontrol data mana yang sedang di-edit. Null = mode Create.
+  const { services, isLoading, fetchServices } = useServices(userLoading);
   const [editingService, setEditingService] = useState(null);
 
-  const fetchServices = async () => {
-    setIsLoading(true);
-    const { data, error } = await supabase
-      .from("layanan")
-      .select("*")
-      .order("id_layanan", { ascending: false });
-
-    if (error) {
-      console.error("Error fetching services:", error);
-      toast({
-        title: "Gagal memuat",
-        description: "Gagal memuat daftar layanan.",
-        variant: "destructive",
-      });
-      setServices([]);
-    } else {
-      setServices(data || []);
-    }
-    setIsLoading(false);
-  };
-
-  useEffect(() => {
-    if (!userLoading) {
-      fetchServices();
-    }
-  }, [userLoading]);
-
-  // Handler untuk mengubah status archived (Soft Delete/Restore)
   const handleArchive = async (service) => {
     const newArchivedStatus = !service.is_archived;
     const action = newArchivedStatus ? "Arsipkan" : "Pulihkan";
 
-    const { error } = await supabase
-      .from("layanan")
-      .update({ is_archived: newArchivedStatus })
-      .eq("id_layanan", service.id_layanan);
+    const { error } = await toggleArchiveService(
+      service.id_layanan,
+      newArchivedStatus,
+    );
 
     if (error) {
       console.error(`Error ${action} layanan:`, error);
-      toast({
-        title: "Gagal",
-        description: `Gagal ${action} layanan: ${error.message}`,
-        variant: "destructive",
-      });
+      showToast(
+        "Gagal",
+        `Gagal ${action} layanan: ${error.message}`,
+        "destructive",
+      );
     } else {
-      toast({
-        title: "Berhasil",
-        description: `Layanan ${service.jenis_layanan} berhasil di${newArchivedStatus ? "arsip" : "pulihkan"}.`,
-        className: "bg-green-500 text-white",
-      });
-      fetchServices(); // Refresh data
+      showToast(
+        "Berhasil",
+        `Layanan ${service.jenis_layanan} berhasil di${newArchivedStatus ? "arsip" : "pulihkan"}.`,
+        "success",
+      );
+      fetchServices();
     }
   };
 
@@ -244,10 +399,8 @@ export default function StaffServicesPage() {
           🧺 Manajemen Layanan
         </h1>
 
-        {/* Form Create/Edit */}
         <ServiceForm
           initialData={editingService}
-          // Jika sukses atau dibatalkan, reset mode editing dan refresh data
           onSuccess={() => {
             setEditingService(null);
             fetchServices();
@@ -255,105 +408,12 @@ export default function StaffServicesPage() {
           onCancel={() => setEditingService(null)}
         />
 
-        {/* Tabel Daftar Layanan */}
-        <div className="bg-white rounded-xl shadow-lg overflow-hidden mt-8">
-          <Table>
-            <TableHeader className="bg-gray-100">
-              <TableRow>
-                <TableHead className="w-[50px]">ID</TableHead>
-                <TableHead>Nama Layanan</TableHead>
-                <TableHead>Harga/Kg</TableHead>
-                <TableHead>Deskripsi</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead className="text-center w-[150px]">Aksi</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {services.length === 0 ? (
-                <TableRow>
-                  <TableCell
-                    colSpan={6}
-                    className="h-24 text-center text-gray-500"
-                  >
-                    Belum ada data layanan.
-                  </TableCell>
-                </TableRow>
-              ) : (
-                services.map((service) => (
-                  <TableRow
-                    key={service.id_layanan}
-                    className={
-                      service.is_archived
-                        ? "bg-red-50/50"
-                        : editingService?.id_layanan === service.id_layanan
-                          ? "bg-yellow-50/70"
-                          : ""
-                    }
-                  >
-                    <TableCell className="font-medium">
-                      {service.id_layanan}
-                    </TableCell>
-                    <TableCell>{service.jenis_layanan}</TableCell>
-                    <TableCell>
-                      Rp{service.harga_per_kg.toLocaleString("id-ID")}
-                    </TableCell>
-                    <TableCell className="text-sm text-gray-600">
-                      {service.deskripsi?.split("|").slice(0, 1).join("") ||
-                        "-"}
-                    </TableCell>
-                    <TableCell className="text-center">
-                      <span
-                        className={`px-3 py-1 text-xs font-semibold rounded-full ${
-                          service.is_archived
-                            ? "bg-red-100 text-red-800"
-                            : "bg-green-100 text-green-800"
-                        }`}
-                      >
-                        {service.is_archived ? "Diarsipkan" : "Aktif"}
-                      </span>
-                    </TableCell>
-                    <TableCell className="space-x-2 flex justify-center">
-                      {/* Tombol Edit */}
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => setEditingService(service)}
-                        title="Edit Layanan"
-                        disabled={
-                          editingService !== null &&
-                          editingService.id_layanan !== service.id_layanan
-                        }
-                      >
-                        <Edit className="h-4 w-4" />
-                      </Button>
-
-                      {/* Tombol Archive/Restore (Soft Delete) */}
-                      <Button
-                        size="sm"
-                        variant={
-                          service.is_archived ? "success" : "destructive"
-                        }
-                        onClick={() => handleArchive(service)}
-                        title={
-                          service.is_archived
-                            ? "Pulihkan Layanan"
-                            : "Arsipkan Layanan"
-                        }
-                        disabled={editingService !== null}
-                      >
-                        {service.is_archived ? (
-                          <Undo2 className="h-4 w-4" />
-                        ) : (
-                          <Archive className="h-4 w-4" />
-                        )}
-                      </Button>
-                    </TableCell>
-                  </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
+        <ServicesTable
+          services={services}
+          editingService={editingService}
+          onEdit={setEditingService}
+          onArchive={handleArchive}
+        />
       </div>
     </StaffDashboardLayout>
   );

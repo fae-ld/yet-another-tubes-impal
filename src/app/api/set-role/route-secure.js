@@ -1,4 +1,4 @@
-// app/api/set-role/route.js - PERBAIKAN MINIMAL
+// app/api/set-role/route.js
 import { NextResponse } from "next/server";
 import { SignJWT } from "jose";
 import { createClient } from "@supabase/supabase-js";
@@ -8,30 +8,27 @@ export const dynamic = "force-dynamic";
 // GUNAKAN ANON KEY, BUKAN SERVICE ROLE!
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY, // <- INI!
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
 );
 
 export async function POST(req) {
   try {
-    // AMBIL SESSION DARI COOKIE/HEADER, BUKAN USER ID DARI BODY!
-    const authHeader = req.headers.get('Authorization');
+    // AMBIL SESSION DARI COOKIE/HEADER
+    const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return NextResponse.json(
-        { error: "Unauthorized" }, 
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.replace('Bearer ', '');
-    
+    const token = authHeader.replace("Bearer ", "");
+
     // VERIFIKASI USER DARI SUPABASE AUTH
-    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-    
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser(token);
+
     if (authError || !user) {
-      return NextResponse.json(
-        { error: "Invalid token" }, 
-        { status: 401 }
-      );
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
     }
 
     // PAKAI user.id dari Supabase Auth, bukan dari client!
@@ -42,7 +39,7 @@ export async function POST(req) {
     const { data: pelanggan } = await supabase
       .from("pelanggan")
       .select("*")
-      .eq("auth_user_id", userId)  // <- KOLOM INI HARUS ADA
+      .eq("auth_user_id", userId) // <- KOLOM INI HARUS ADA
       .single();
 
     if (pelanggan) {
@@ -51,7 +48,7 @@ export async function POST(req) {
       const { data: staf } = await supabase
         .from("staf")
         .select("*")
-        .eq("auth_user_id", userId)  // <- KOLOM INI HARUS ADA
+        .eq("auth_user_id", userId) // <- KOLOM INI HARUS ADA
         .single();
 
       if (staf) role = "staf";
@@ -64,10 +61,10 @@ export async function POST(req) {
       }
     }
 
-    const token = await new SignJWT({ 
+    const token = await new SignJWT({
       role,
       userId: user.id, // Pakai verified user.id
-      email: user.email 
+      email: user.email,
     })
       .setProtectedHeader({ alg: "HS256" })
       .setExpirationTime("1d")
@@ -90,7 +87,7 @@ export async function POST(req) {
     console.error("Set-role error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

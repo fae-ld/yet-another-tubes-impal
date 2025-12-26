@@ -1,24 +1,217 @@
 "use client";
 
 import DashboardLayout from "@/components/DashboardLayout";
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase";
 import { useUser } from "@/contexts/UserContext";
-import { Minus, Plus, Loader2 } from "lucide-react"; // Import ikon
-import Link from "next/link";
+import { Minus, Plus, Loader2 } from "lucide-react";
 
-// Komponen Reusable untuk input stepper (Tombol +/-)
+// =========================================================
+// CONSTANTS
+// =========================================================
+const CACHE_KEY = "services_cache";
+const CACHE_TTL = 6000 * 60 * 60; // 6 jam
+const MAX_DAYS_AHEAD = 7;
+
+// =========================================================
+// UTILITY FUNCTIONS
+// =========================================================
+const getServiceIcon = (title = "") => {
+  const lower = title.toLowerCase();
+  if (lower.includes("setrika") && lower.includes("cuci")) {
+    return "/images/ic-ironwash.png";
+  }
+  if (lower.includes("setrika")) {
+    return "/images/ic-ironing.png";
+  }
+  if (lower.includes("cuci")) {
+    return "/images/ic-wash.png";
+  }
+  return "/images/ic-wash.png";
+};
+
+const formatServiceData = (data) => {
+  return data.map((item) => ({
+    id: item.id_layanan,
+    title: item.jenis_layanan,
+    harga_per_kg: item.harga_per_kg,
+    features: item.deskripsi
+      ? item.deskripsi.split("|").map((d) => d.trim())
+      : [],
+    priceDisplay: `Rp${item.harga_per_kg.toLocaleString("id-ID")} / kg`,
+  }));
+};
+
+const getMaxDate = () => {
+  const max = new Date();
+  max.setDate(max.getDate() + MAX_DAYS_AHEAD);
+  return max.toISOString().split("T")[0];
+};
+
+const getTodayDate = () => {
+  return new Date().toISOString().split("T")[0];
+};
+
+// =========================================================
+// VALIDATION FUNCTIONS
+// =========================================================
+const validateDateRange = (dateString) => {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const selected = new Date(dateString);
+  selected.setHours(0, 0, 0, 0);
+
+  if (selected < today) {
+    return {
+      valid: false,
+      message: "Tanggal estimasi tidak boleh sebelum hari ini 😅",
+    };
+  }
+
+  const maxDate = new Date();
+  maxDate.setDate(maxDate.getDate() + MAX_DAYS_AHEAD);
+
+  if (selected > maxDate) {
+    return {
+      valid: false,
+      message: `Tanggal estimasi maksimal ${MAX_DAYS_AHEAD} hari dari sekarang ⏰`,
+    };
+  }
+
+  return { valid: true };
+};
+
+const validateOrderSubmission = (userLoading, user, selectedService) => {
+  if (userLoading) {
+    return {
+      valid: false,
+      message: "Tunggu sebentar... sedang memeriksa status login 🕐",
+    };
+  }
+  if (!user) {
+    return {
+      valid: false,
+      message: "Kamu harus login dulu sebelum membuat pesanan!",
+    };
+  }
+  if (!selectedService) {
+    return { valid: false, message: "Pilih jenis layanan terlebih dahulu." };
+  }
+  return { valid: true };
+};
+
+// =========================================================
+// CUSTOM HOOKS
+// =========================================================
+const useServices = (selectedServiceId) => {
+  const [services, setServices] = useState([]);
+  const [loadingServices, setLoadingServices] = useState(true);
+
+  useEffect(() => {
+    const fetchServices = async () => {
+      setLoadingServices(true);
+
+      const cached = localStorage.getItem(CACHE_KEY);
+      const cachedTime = localStorage.getItem(`${CACHE_KEY}_time`);
+
+      if (cached && cachedTime && Date.now() - cachedTime < CACHE_TTL) {
+        const cachedData = JSON.parse(cached);
+        setServices(cachedData);
+        setLoadingServices(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from("layanan")
+        .select("*")
+        .eq("is_archived", false)
+        .order("id_layanan", { ascending: true });
+
+      if (!error && data) {
+        const formatted = formatServiceData(data);
+        setServices(formatted);
+
+        localStorage.setItem(CACHE_KEY, JSON.stringify(formatted));
+        localStorage.setItem(`${CACHE_KEY}_time`, Date.now());
+      }
+      setLoadingServices(false);
+    };
+
+    fetchServices();
+  }, [selectedServiceId]);
+
+  return { services, loadingServices };
+};
+
+const useUserAddress = (user) => {
+  const [alamatUser, setAlamatUser] = useState(null);
+
+  useEffect(() => {
+    if (!user) return;
+
+    const fetchPelanggan = async () => {
+      const { data, error } = await supabase
+        .from("pelanggan")
+        .select("alamat")
+        .eq("id_pelanggan", user.id)
+        .single();
+
+      if (!error && data) {
+        setAlamatUser(data.alamat || "");
+      }
+    };
+
+    fetchPelanggan();
+  }, [user]);
+
+  return alamatUser;
+};
+
+// =========================================================
+// ORDER CREATION
+// =========================================================
+const createOrderInDatabase = async (orderData) => {
+  const { data, error } = await supabase
+    .from("pesanan")
+    .insert([orderData])
+    .select();
+
+  if (error) {
+    console.error("❌ Gagal buat pesanan:", error);
+    throw new Error("Terjadi kesalahan saat membuat pesanan");
+  }
+
+  return data[0];
+};
+
+const createOrderHistory = async (orderId) => {
+  await supabase.from("riwayat_status_pesanan").insert({
+    id_pesanan: orderId,
+    status: "Pesanan Dibuat",
+    deskripsi: "Order berhasil dibuat dan masuk sistem.",
+    waktu: new Date().toISOString(),
+  });
+};
+
+const createOrderNotification = async (userId, orderId) => {
+  await supabase.from("notifikasi").insert({
+    id_user: userId,
+    id_pesanan: orderId,
+    tipe: "ORDER_CREATED",
+    konten:
+      "Pesanan Anda berhasil dibuat! Kami akan segera menjemput pakaian Anda.",
+  });
+};
+
+// =========================================================
+// COMPONENTS
+// =========================================================
 const StepperInput = ({ label, value, onChange, unit }) => {
-  const handleIncrement = () => {
-    onChange(value + 1);
-  };
-
+  const handleIncrement = () => onChange(value + 1);
   const handleDecrement = () => {
-    if (value > 1) {
-      onChange(value - 1);
-    }
+    if (value > 1) onChange(value - 1);
   };
 
   return (
@@ -43,7 +236,6 @@ const StepperInput = ({ label, value, onChange, unit }) => {
             if (!isNaN(val) && val >= 1) {
               onChange(val);
             } else if (e.target.value === "") {
-              // Memungkinkan input kosong sesaat, tapi setidaknya 1
               onChange(1);
             }
           }}
@@ -64,213 +256,242 @@ const StepperInput = ({ label, value, onChange, unit }) => {
   );
 };
 
+const ServiceCard = ({ service, isSelected, onSelect }) => (
+  <div
+    onClick={() => onSelect(service.id)}
+    className={`bg-white rounded-2xl p-5 flex flex-col items-center text-center transition-all duration-200 cursor-pointer border-4 ${
+      isSelected
+        ? "border-blue-500 shadow-xl scale-[1.02]"
+        : "border-gray-200 hover:border-blue-300 hover:shadow-lg"
+    }`}
+  >
+    <img
+      src={getServiceIcon(service.title)}
+      alt={service.title}
+      className="w-20 h-20 object-contain mb-3"
+    />
+    <h2 className="text-xl font-bold text-blue-700 mb-2">{service.title}</h2>
+    <ul className="text-blue-600 text-sm space-y-1 mb-4 text-left">
+      {service.features.map((f, idx) => (
+        <li key={idx} className="before:content-['✅'] before:mr-1">
+          &nbsp;{f}
+        </li>
+      ))}
+    </ul>
+    <span className="font-bold text-blue-700 text-lg">
+      {service.priceDisplay}
+    </span>
+  </div>
+);
+
+const AddressField = ({
+  formData,
+  setFormData,
+  useMyAddress,
+  setUseMyAddress,
+  alamatUser,
+}) => {
+  const handleCheckboxChange = (isChecked) => {
+    if (isChecked && (!alamatUser || alamatUser.trim() === "")) {
+      alert(
+        "⚠️ Alamat Anda di profil (alamatUser) masih kosong. Mohon isi dulu di halaman Settings jika ingin menggunakan fitur 'Pake alamat saya'.",
+      );
+      setUseMyAddress(false);
+      return;
+    }
+
+    setUseMyAddress(isChecked);
+    setFormData({
+      ...formData,
+      address: isChecked ? alamatUser : "",
+    });
+  };
+
+  const isAddressEmpty = !alamatUser || alamatUser.trim() === "";
+
+  return (
+    <div className="flex flex-col">
+      <div className="flex items-center mb-3">
+        <input
+          type="checkbox"
+          id="useMyAddressCheckbox"
+          checked={useMyAddress}
+          onChange={(e) => handleCheckboxChange(e.target.checked)}
+          className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+        />
+        <label
+          htmlFor="useMyAddressCheckbox"
+          className="ml-2 text-blue-700 font-medium cursor-pointer"
+        >
+          Pake alamat saya
+        </label>
+      </div>
+
+      <label className="text-blue-700 font-medium mb-1">
+        Alamat Lengkap 🏠
+      </label>
+      <textarea
+        placeholder="Contoh: Jl. Sudirman No. 123, Jakarta"
+        value={formData.address}
+        onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+        className={`border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full shadow-sm resize-none ${
+          useMyAddress
+            ? "border-gray-300 bg-gray-50 text-gray-500"
+            : "border-blue-200 focus:ring-blue-400"
+        }`}
+        rows={3}
+        disabled={useMyAddress}
+        required
+      />
+
+      {useMyAddress && (
+        <p className="text-xs text-green-600 mt-1 italic">
+          Alamat diambil dari profil (`alamatUser`). Lepas centang untuk input
+          alamat lain.
+        </p>
+      )}
+      {isAddressEmpty && (
+        <p className="text-xs text-orange-500 mt-1 font-semibold">
+          💡 Alamat profil Anda masih kosong. Isi alamat manual atau update di
+          Settings.
+        </p>
+      )}
+    </div>
+  );
+};
+
+const PaymentMethodSelector = ({ selectedMethod, onChange }) => {
+  const methods = [
+    {
+      value: "QRIS",
+      icon: "📱",
+      title: "QRIS",
+      description: "Pembayaran di awal (via Midtrans)",
+    },
+    {
+      value: "COD",
+      icon: "💰",
+      title: "COD (Bayar Tunai)",
+      description: "Bayar saat pakaian diantar",
+    },
+  ];
+
+  return (
+    <div className="flex flex-col mt-2">
+      <label className="text-blue-700 font-bold mb-3 text-lg">
+        Metode Pembayaran 💳
+      </label>
+      <div className="flex flex-wrap gap-4">
+        {methods.map((method) => (
+          <div
+            key={method.value}
+            className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors duration-200 ${
+              selectedMethod === method.value
+                ? "border-blue-500 bg-blue-50 shadow-md"
+                : "border-gray-300 hover:bg-gray-50"
+            }`}
+            onClick={() => onChange(method.value)}
+          >
+            <input
+              type="radio"
+              name="paymentMethod"
+              value={method.value}
+              checked={selectedMethod === method.value}
+              onChange={() => {}}
+              className="hidden"
+            />
+            <span className="text-2xl mr-2">{method.icon}</span>
+            <div>
+              <span className="font-semibold text-blue-800 block">
+                {method.title}
+              </span>
+              <span className="text-sm text-gray-600">
+                {method.description}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+};
+
+// =========================================================
+// MAIN COMPONENT
+// =========================================================
 export default function ServicesPage() {
   const { user, loading: userLoading } = useUser();
   const router = useRouter();
 
-  const [services, setServices] = useState([]);
   const [selectedServiceId, setSelectedServiceId] = useState(null);
   const [formData, setFormData] = useState({
-    weight: 1, // Default min 1
-    quantity: 1, // Default min 1
+    weight: 1,
+    quantity: 1,
     address: "",
     estimatedDate: "",
-    paymentMethod: "QRIS", // Default ke Prepaid
+    paymentMethod: "QRIS",
   });
   const [loading, setLoading] = useState(false);
-  const [loadingServices, setLoadingServices] = useState(true);
-  const [alamatUser, setAlamatUser] = useState(null);
   const [useMyAddress, setUseMyAddress] = useState(false);
 
-  const CACHE_KEY = "services_cache";
-  const CACHE_TTL = 6000 * 60 * 60; // 6 jam
+  const { services, loadingServices } = useServices(selectedServiceId);
+  const alamatUser = useUserAddress(user);
 
-  // **Memoized: Layanan yang dipilih**
   const selectedService = useMemo(() => {
     return services.find((s) => s.id === selectedServiceId);
   }, [services, selectedServiceId]);
 
-  // **Fungsi Fetch Services**
   useEffect(() => {
-    const fetchServices = async () => {
-      setLoadingServices(true);
-
-      const cached = localStorage.getItem(CACHE_KEY);
-      const cachedTime = localStorage.getItem(`${CACHE_KEY}_time`);
-
-      if (cached && cachedTime && Date.now() - cachedTime < CACHE_TTL) {
-        const cachedData = JSON.parse(cached);
-        setServices(cachedData);
-        setLoadingServices(false);
-        return;
-      }
-
-      const { data, error } = await supabase
-        .from("layanan")
-        .select("*")
-        .eq("is_archived", false)
-        .order("id_layanan", { ascending: true }); // Pastikan order konsisten
-
-      if (!error && data) {
-        const formatted = data.map((item) => ({
-          id: item.id_layanan,
-          title: item.jenis_layanan,
-          harga_per_kg: item.harga_per_kg, // Tambahkan harga asli
-          features: item.deskripsi
-            ? item.deskripsi.split("|").map((d) => d.trim())
-            : [],
-          priceDisplay: `Rp${item.harga_per_kg.toLocaleString("id-ID")} / kg`,
-        }));
-
-        setServices(formatted);
-        if (formatted.length > 0 && selectedServiceId === null) {
-          setSelectedServiceId(formatted[0].id); // Set default
-        }
-
-        localStorage.setItem(CACHE_KEY, JSON.stringify(formatted));
-        localStorage.setItem(`${CACHE_KEY}_time`, Date.now());
-      }
-      setLoadingServices(false);
-    };
-    fetchServices();
-  }, [selectedServiceId]);
-
-  useEffect(() => {
-    if (!user) return;
-
-    async function fetchPelanggan() {
-      const { data, error } = await supabase
-        .from("pelanggan")
-        .select("alamat")
-        .eq("id_pelanggan", user.id)
-        .single();
-
-      if (!error && data) {
-        setAlamatUser(data.alamat || "");
-      }
+    if (services.length > 0 && selectedServiceId === null) {
+      setSelectedServiceId(services[0].id);
     }
+  }, [services, selectedServiceId]);
 
-    fetchPelanggan();
-  }, [user]);
-
-  // **Handler Form Submission**
   const handleSubmit = async (e) => {
     e.preventDefault();
 
-    if (userLoading) {
-      alert("Tunggu sebentar... sedang memeriksa status login 🕐");
+    const validation = validateOrderSubmission(
+      userLoading,
+      user,
+      selectedService,
+    );
+    if (!validation.valid) {
+      alert(validation.message);
       return;
     }
 
-    if (!user) {
-      alert("Kamu harus login dulu sebelum membuat pesanan!");
-      return;
-    }
-
-    if (!selectedService) {
-      alert("Pilih jenis layanan terlebih dahulu.");
-      return;
-    }
-
-    // --- Validasi Tanggal ---
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const selected = new Date(formData.estimatedDate);
-    selected.setHours(0, 0, 0, 0);
-
-    const maxDate = new Date();
-    maxDate.setDate(maxDate.getDate() + 7);
-
-    if (selected < today) {
-      alert("Tanggal estimasi tidak boleh sebelum hari ini 😅");
-      return;
-    }
-
-    if (selected > maxDate) {
-      alert("Tanggal estimasi maksimal 7 hari dari sekarang ⏰");
+    const dateValidation = validateDateRange(formData.estimatedDate);
+    if (!dateValidation.valid) {
+      alert(dateValidation.message);
       return;
     }
 
     setLoading(true);
 
-    // --- Perhitungan Biaya ---
-    const berat = parseFloat(formData.weight);
-    // Kita gunakan harga_per_kg dari selectedService (harga asli numerik)
-    const hargaPerKg = selectedService.harga_per_kg;
-    const totalBiaya = berat * hargaPerKg;
+    try {
+      const berat = parseFloat(formData.weight);
+      const totalBiaya = berat * selectedService.harga_per_kg;
 
-    // --- Data Pesanan ---
-    const newOrder = {
-      id_pelanggan: user.id,
-      id_layanan: selectedService.id,
-      estimasi_berat: berat,
-      // Total biaya diisi di awal, tapi akan diverifikasi staff
-      total_biaya_final: totalBiaya, // Sementara disamakan
-      // jumlah_pakaian: parseInt(formData.quantity), // Tambahkan jumlah pakaian
-      // alamat_penjemputan: formData.address, // Tambahkan alamat
-      jadwal_selesai: formData.estimatedDate
-        ? new Date(formData.estimatedDate).toISOString()
-        : null,
-      // ⚠️ SIMPAN METODE PEMBAYARAN DI SINI
-      metode_pembayaran: formData.paymentMethod,
-      // Set status pembayaran awal (untuk COD, statusnya tetap Unpaid)
-      status_pembayaran: "Pending",
-    };
+      const newOrder = {
+        id_pelanggan: user.id,
+        id_layanan: selectedService.id,
+        estimasi_berat: berat,
+        total_biaya_final: totalBiaya,
+        jadwal_selesai: new Date(formData.estimatedDate).toISOString(),
+        metode_pembayaran: formData.paymentMethod,
+        status_pembayaran: "Pending",
+      };
 
-    const { data, error } = await supabase
-      .from("pesanan")
-      .insert([newOrder])
-      .select();
+      const createdOrder = await createOrderInDatabase(newOrder);
+      await createOrderHistory(createdOrder.id_pesanan);
+      await createOrderNotification(user.id, createdOrder.id_pesanan);
 
-    if (error) {
-      console.log(newOrder);
-      console.error("❌ Gagal buat pesanan:", error);
-      alert("Terjadi kesalahan saat membuat pesanan 😭");
+      router.push(`/orders/${createdOrder.id_pesanan}`);
+    } catch (error) {
+      alert(error.message || "Terjadi kesalahan saat membuat pesanan 😭");
+    } finally {
       setLoading(false);
-      return;
     }
-
-    const orderId = data[0].id_pesanan;
-    if (data.length > 0) {
-      // Tambahkan riwayat status 'Pesanan Dibuat' (Step 1)
-      const { error: statusErr } = await supabase
-        .from("riwayat_status_pesanan")
-        .insert({
-          id_pesanan: orderId,
-          status: "Pesanan Dibuat",
-          deskripsi: "Order berhasil dibuat dan masuk sistem.",
-          waktu: new Date().toISOString(),
-        });
-      if (statusErr) console.error("⚠️ Gagal insert riwayat status:", statusErr);
-
-      // Notifikasi
-      const { error: notifErr } = await supabase.from("notifikasi").insert({
-        id_user: user.id,
-        id_pesanan: orderId,
-        tipe: "ORDER_CREATED",
-        konten:
-          "Pesanan Anda berhasil dibuat! Kami akan segera menjemput pakaian Anda.",
-      });
-      if (notifErr)
-        console.error("⚠️ Gagal insert notifikasi (CREATED):", notifErr);
-    }
-
-    setLoading(false);
-
-    // Redirect ke halaman detail pesanan
-    router.push(`/orders/${orderId}`);
-  };
-
-  const getServiceIcon = (title = "") => {
-    const lower = title.toLowerCase();
-    if (lower.includes("setrika") && lower.includes("cuci")) {
-      return "/images/ic-ironwash.png";
-    } else if (lower.includes("setrika")) {
-      return "/images/ic-ironing.png";
-    } else if (lower.includes("cuci")) {
-      return "/images/ic-wash.png";
-    }
-    return "/images/ic-wash.png"; // Fallback
   };
 
   if (loadingServices) {
@@ -291,7 +512,6 @@ export default function ServicesPage() {
           Pilih Layanan & Buat Pesanan
         </h1>
 
-        {/* --- Bagian Pemilihan Layanan --- */}
         <div className="mb-8">
           <h2 className="text-xl font-semibold text-blue-700 mb-4">
             1. Pilih Jenis Layanan Anda
@@ -301,43 +521,17 @@ export default function ServicesPage() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {services.map((service) => (
-                <div
+                <ServiceCard
                   key={service.id}
-                  onClick={() => setSelectedServiceId(service.id)}
-                  className={`bg-white rounded-2xl p-5 flex flex-col items-center text-center transition-all duration-200 cursor-pointer border-4 ${
-                    selectedServiceId === service.id
-                      ? "border-blue-500 shadow-xl scale-[1.02]"
-                      : "border-gray-200 hover:border-blue-300 hover:shadow-lg"
-                  }`}
-                >
-                  <img
-                    src={getServiceIcon(service.title)}
-                    alt={service.title}
-                    className="w-20 h-20 object-contain mb-3"
-                  />
-                  <h2 className="text-xl font-bold text-blue-700 mb-2">
-                    {service.title}
-                  </h2>
-                  <ul className="text-blue-600 text-sm space-y-1 mb-4 text-left">
-                    {service.features.map((f, idx) => (
-                      <li
-                        key={idx}
-                        className="before:content-['✅'] before:mr-1"
-                      >
-                        &nbsp;{f}
-                      </li>
-                    ))}
-                  </ul>
-                  <span className="font-bold text-blue-700 text-lg">
-                    {service.priceDisplay}
-                  </span>
-                </div>
+                  service={service}
+                  isSelected={selectedServiceId === service.id}
+                  onSelect={setSelectedServiceId}
+                />
               ))}
             </div>
           )}
         </div>
 
-        {/* --- Bagian Form Pemesanan (Hanya Tampil jika layanan dipilih) --- */}
         {selectedService && (
           <div className="bg-white p-6 md:p-10 rounded-2xl shadow-2xl border border-blue-100">
             <h2 className="text-2xl font-bold text-blue-700 mb-6 border-b pb-4">
@@ -349,15 +543,12 @@ export default function ServicesPage() {
               className="flex flex-col gap-6 w-full"
             >
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Estimasi Berat (Stepper) */}
                 <StepperInput
                   label="Estimasi Berat (kg) ⚖️"
                   value={formData.weight}
                   onChange={(val) => setFormData({ ...formData, weight: val })}
                   unit="kg"
                 />
-
-                {/* Jumlah Pakaian (Stepper) */}
                 <StepperInput
                   label="Jumlah Pakaian (helai) 👕"
                   value={formData.quantity}
@@ -368,83 +559,14 @@ export default function ServicesPage() {
                 />
               </div>
 
-              {/* Alamat Lengkap */}
-              <div className="flex flex-col">
-                {/* Checkbox untuk Alamat */}
-                <div className="flex items-center mb-3">
-                  <input
-                    type="checkbox"
-                    id="useMyAddressCheckbox"
-                    checked={useMyAddress}
-                    onChange={(e) => {
-                      const isChecked = e.target.checked;
+              <AddressField
+                formData={formData}
+                setFormData={setFormData}
+                useMyAddress={useMyAddress}
+                setUseMyAddress={setUseMyAddress}
+                alamatUser={alamatUser}
+              />
 
-                      // 1. Cek apakah alamatUser kosong/null
-                      if (
-                        isChecked &&
-                        (!alamatUser || alamatUser.trim() === "")
-                      ) {
-                        alert(
-                          "⚠️ Alamat Anda di profil (alamatUser) masih kosong. Mohon isi dulu di halaman Settings jika ingin menggunakan fitur 'Pake alamat saya'.",
-                        );
-
-                        // Mencegah state useMyAddress berubah menjadi true jika alamatUser kosong
-                        setUseMyAddress(false);
-                        return;
-                      }
-
-                      // 2. Lanjutkan logika jika alamatUser ada atau jika user ingin un-check (isChecked = false)
-                      setUseMyAddress(isChecked);
-
-                      if (isChecked) {
-                        // Jika dicentang dan alamat ada: Gunakan alamatUser
-                        setFormData({ ...formData, address: alamatUser });
-                      } else {
-                        // Jika tidak dicentang: Kosongkan untuk input manual
-                        setFormData({ ...formData, address: "" });
-                      }
-                    }}
-                    className="h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                  />
-                  <label
-                    htmlFor="useMyAddressCheckbox"
-                    className="ml-2 text-blue-700 font-medium cursor-pointer"
-                  >
-                    Pake alamat saya
-                  </label>
-                </div>
-
-                <label className="text-blue-700 font-medium mb-1">
-                  Alamat Lengkap 🏠
-                </label>
-                <textarea
-                  placeholder="Contoh: Jl. Sudirman No. 123, Jakarta"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  className={`border rounded-lg px-4 py-3 focus:outline-none focus:ring-2 w-full shadow-sm resize-none 
-      ${useMyAddress ? "border-gray-300 bg-gray-50 text-gray-500" : "border-blue-200 focus:ring-blue-400"}`}
-                  rows={3}
-                  disabled={useMyAddress}
-                  required
-                />
-
-                {/* Pesan Keterangan */}
-                {useMyAddress && (
-                  <p className="text-xs text-green-600 mt-1 italic">
-                    Alamat diambil dari profil (`alamatUser`). Lepas centang
-                    untuk input alamat lain.
-                  </p>
-                )}
-                {(!alamatUser || alamatUser.trim() === "") && (
-                  <p className="text-xs text-orange-500 mt-1 font-semibold">
-                    💡 Alamat profil Anda masih kosong. Isi alamat manual atau
-                    update di Settings.
-                  </p>
-                )}
-              </div>
-              {/* Estimasi Selesai */}
               <div className="flex flex-col">
                 <label className="text-blue-700 font-medium mb-1">
                   Estimasi Selesai 📅
@@ -455,88 +577,20 @@ export default function ServicesPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, estimatedDate: e.target.value })
                   }
-                  min={new Date().toISOString().split("T")[0]}
-                  max={(() => {
-                    const max = new Date();
-                    max.setDate(max.getDate() + 7);
-                    return max.toISOString().split("T")[0];
-                  })()}
+                  min={getTodayDate()}
+                  max={getMaxDate()}
                   className="border border-blue-200 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-400 w-full shadow-sm"
                   required
                 />
               </div>
 
-              {/* Pilihan Metode Pembayaran */}
-              <div className="flex flex-col mt-2">
-                <label className="text-blue-700 font-bold mb-3 text-lg">
-                  Metode Pembayaran 💳
-                </label>
-                <div className="flex flex-wrap gap-4">
-                  {/* Opsi QRIS (Prepaid) */}
-                  <div
-                    className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors duration-200 ${
-                      formData.paymentMethod === "QRIS"
-                        ? "border-blue-500 bg-blue-50 shadow-md"
-                        : "border-gray-300 hover:bg-gray-50"
-                    }`}
-                    onClick={() =>
-                      setFormData({ ...formData, paymentMethod: "QRIS" })
-                    }
-                  >
-                    <input
-                      type="radio"
-                      id="payment-prepaid"
-                      name="paymentMethod"
-                      value="QRIS"
-                      checked={formData.paymentMethod === "QRIS"}
-                      onChange={() => {}} // Controlled by onClick
-                      className="hidden"
-                    />
-                    <span className="text-2xl mr-2">📱</span>
-                    <div>
-                      <span className="font-semibold text-blue-800 block">
-                        QRIS
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        Pembayaran di awal (via Midtrans)
-                      </span>
-                    </div>
-                  </div>
+              <PaymentMethodSelector
+                selectedMethod={formData.paymentMethod}
+                onChange={(method) =>
+                  setFormData({ ...formData, paymentMethod: method })
+                }
+              />
 
-                  {/* Opsi COD (Cash On Delivery) */}
-                  <div
-                    className={`flex items-center p-3 rounded-lg border-2 cursor-pointer transition-colors duration-200 ${
-                      formData.paymentMethod === "COD"
-                        ? "border-blue-500 bg-blue-50 shadow-md"
-                        : "border-gray-300 hover:bg-gray-50"
-                    }`}
-                    onClick={() =>
-                      setFormData({ ...formData, paymentMethod: "COD" })
-                    }
-                  >
-                    <input
-                      type="radio"
-                      id="payment-cod"
-                      name="paymentMethod"
-                      value="COD"
-                      checked={formData.paymentMethod === "COD"}
-                      onChange={() => {}} // Controlled by onClick
-                      className="hidden"
-                    />
-                    <span className="text-2xl mr-2">💰</span>
-                    <div>
-                      <span className="font-semibold text-blue-800 block">
-                        COD (Bayar Tunai)
-                      </span>
-                      <span className="text-sm text-gray-600">
-                        Bayar saat pakaian diantar
-                      </span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Tombol Submit */}
               <div className="flex justify-end mt-6">
                 <Button
                   type="submit"

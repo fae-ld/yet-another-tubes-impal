@@ -1,5 +1,5 @@
 // src/__tests__/setup.js
-import { vi } from 'vitest';
+import { vi } from "vitest";
 
 // Provide jest globals for compatibility
 global.jest = vi;

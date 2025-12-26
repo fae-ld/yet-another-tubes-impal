@@ -10,9 +10,9 @@ export default defineConfig([
   },
   {
     files: ["**/*.js", "**/*.jsx"],
-    plugins: { 
-      js, 
-      sonarjs 
+    plugins: {
+      js,
+      sonarjs,
     },
     languageOptions: {
       globals: {
@@ -28,7 +28,7 @@ export default defineConfig([
     },
     rules: {
       // --- 1. CYCLOMATIC COMPLEXITY (Alur Logika) ---
-      "complexity": ["error", 10], // Maksimal 10 jalur percabangan (if/else, switch)
+      complexity: ["error", 10], // Maksimal 10 jalur percabangan (if/else, switch)
 
       // --- 2. COGNITIVE COMPLEXITY (Kemudahan Dibaca) ---
       "sonarjs/cognitive-complexity": ["error", 15], // Mengukur seberapa sulit kode dipahami otak
@@ -51,12 +51,12 @@ export default defineConfig([
       "no-console": ["warn", { allow: ["warn", "error"] }], // Mencegah sampah debug di production
     },
   },
-  
+
   // Konfigurasi khusus untuk Backend (API Routes)
   {
     files: ["src/app/api/**/*.js"],
     languageOptions: {
       globals: { ...globals.node },
     },
-  }
+  },
 ]);

@@ -27,7 +27,7 @@ export async function middleware(req) {
       );
       role = payload.role;
     } catch (err) {
-      console.log("Invalid role token, deleting cookie:", err.message);
+      console.error("Invalid role token, deleting cookie:", err.message);
       // Jika token invalid/expired, hapus cookie dan arahkan ke root
       const response = NextResponse.redirect(new URL("/", req.url));
       response.cookies.delete(COOKIE_NAME);

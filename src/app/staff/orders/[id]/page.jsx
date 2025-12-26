@@ -22,20 +22,254 @@ import {
   renderStatusBadge,
 } from "@/components/staff/orders/OrderDetails";
 
+// Constants
+const FIELD_ID_PESANAN = "id_pesanan";
+
+// ============= Helper Functions =============
+
+async function fetchUserData(customerId) {
+  try {
+    const url = `/api/user?uuid=${customerId}`;
+    const response = await fetch(url, { method: "GET" });
+    const result = await response.json();
+    return result.user;
+  } catch (error) {
+    console.error("Error:", error.message);
+    return null;
+  }
+}
+
+async function fetchOrderData(orderId) {
+  const { data, error } = await supabase
+    .from("pesanan")
+    .select("*")
+    .eq(FIELD_ID_PESANAN, orderId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function fetchServiceData(serviceId) {
+  const { data, error } = await supabase
+    .from("layanan")
+    .select("*")
+    .eq("id_layanan", serviceId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function fetchCustomerData(customerId) {
+  const { data, error } = await supabase
+    .from("pelanggan")
+    .select("nama")
+    .eq("id_pelanggan", customerId)
+    .single();
+
+  if (error) throw error;
+  return data;
+}
+
+async function fetchStatusHistory(orderId) {
+  const { data, error } = await supabase
+    .from("riwayat_status_pesanan")
+    .select("*")
+    .eq(FIELD_ID_PESANAN, orderId)
+    .order("waktu", { ascending: false });
+
+  if (error) throw error;
+  return data;
+}
+
+async function fetchReview(orderId) {
+  const { data, error } = await supabase
+    .from("ulasan")
+    .select("*")
+    .eq(FIELD_ID_PESANAN, orderId)
+    .single();
+
+  if (error && error.code !== "PGRST116") throw error;
+  return data;
+}
+
+function validateStepProgression(
+  order,
+  clickedIndex,
+  currentIndexInDB,
+  ORDER_SUBSTEPS,
+) {
+  // Validasi berat aktual
+  if (order.berat_aktual === null && clickedIndex > 2) {
+    return { valid: false, message: "Set berat aktual dulu lah 😡😡💢💢💢" };
+  }
+
+  const isCOD = order.metode_pembayaran === "COD";
+
+  // Validasi pembayaran untuk non-COD
+  if (
+    !isCOD &&
+    clickedIndex > 3 &&
+    order.status_pembayaran !== "Paid" &&
+    order.status_pesanan === "Menunggu Pembayaran"
+  ) {
+    return { valid: false, message: "Bro pelanggan nya belum bayar 🤬💢" };
+  }
+
+  // Validasi lunas sebelum dicuci (non-COD)
+  if (!isCOD && order.status_pembayaran !== "Paid") {
+    const waitingForPaymentIndex = ORDER_SUBSTEPS.findIndex(
+      (s) => s.label === "Menunggu Pembayaran",
+    );
+
+    if (
+      clickedIndex > waitingForPaymentIndex &&
+      currentIndexInDB < waitingForPaymentIndex
+    ) {
+      return {
+        valid: false,
+        message:
+          "Pembayaran belum lunas. Status tidak dapat dimajukan melewati 'Menunggu Pembayaran'.",
+      };
+    }
+  }
+
+  // Validasi selesai
+  if (clickedIndex === 8 && order.status_pembayaran !== "Paid") {
+    return { valid: false, message: "Konfirmasi pembayaran dulu yah" };
+  }
+
+  return { valid: true };
+}
+
+function getStepsToInsert(
+  ORDER_SUBSTEPS,
+  currentIndexInDB,
+  clickedIndex,
+  existingStatuses,
+) {
+  return ORDER_SUBSTEPS.slice(currentIndexInDB + 1, clickedIndex + 1).filter(
+    (step) => !existingStatuses.includes(step.label),
+  );
+}
+
+function getStepsToDelete(ORDER_SUBSTEPS, clickedIndex) {
+  return ORDER_SUBSTEPS.slice(clickedIndex + 1).map((s) => s.label);
+}
+
+async function insertStatusSteps(steps, orderId) {
+  const inserts = steps.map((step) => ({
+    [FIELD_ID_PESANAN]: orderId,
+    status: step.label,
+    deskripsi: step.desc,
+    waktu: new Date(),
+  }));
+
+  const { error } = await supabase
+    .from("riwayat_status_pesanan")
+    .insert(inserts);
+
+  if (error) throw error;
+  return steps[steps.length - 1].label;
+}
+
+async function deleteStatusSteps(stepsToDelete, orderId) {
+  const { error } = await supabase
+    .from("riwayat_status_pesanan")
+    .delete()
+    .in("status", stepsToDelete)
+    .eq(FIELD_ID_PESANAN, orderId);
+
+  if (error) throw error;
+}
+
+function buildUpdatePayload(clickedStep, order) {
+  const isCOD = order.metode_pembayaran === "COD";
+  const updatePayload = {
+    status_pesanan: clickedStep.label,
+  };
+
+  if (isCOD && clickedStep.label === "Selesai") {
+    updatePayload.status_pembayaran = "Paid";
+    updatePayload.tgl_pembayaran_lunas = new Date().toISOString();
+    updatePayload.jumlah_dibayar = order.total_biaya_final;
+    updatePayload.metode_pembayaran = "COD";
+  }
+
+  return updatePayload;
+}
+
+async function updateOrderStatus(updatePayload, orderId) {
+  const { error } = await supabase
+    .from("pesanan")
+    .update(updatePayload)
+    .eq(FIELD_ID_PESANAN, orderId);
+
+  if (error) throw error;
+}
+
+async function refetchStatusHistory(orderId) {
+  const { data, error } = await supabase
+    .from("riwayat_status_pesanan")
+    .select("*")
+    .eq(FIELD_ID_PESANAN, orderId)
+    .order("waktu", { ascending: true });
+
+  if (error) throw error;
+  return data;
+}
+
+async function confirmPayment(order, orderId) {
+  const confirmed = confirm(
+    `Yakin konfirmasi pembayaran LUNAS sebesar Rp ${Number(
+      order.total_biaya_final,
+    ).toLocaleString("id-ID")},-?`,
+  );
+
+  if (!confirmed) return;
+
+  const { error } = await supabase
+    .from("pesanan")
+    .update({
+      status_pembayaran: "Paid",
+      tgl_pembayaran_lunas: new Date().toISOString(),
+      metode_pembayaran: order.metode_pembayaran === "COD" ? "COD" : "QRIS",
+      jumlah_dibayar: order.total_biaya_final,
+    })
+    .eq(FIELD_ID_PESANAN, orderId);
+
+  if (error) throw error;
+  alert("Pembayaran berhasil dikonfirmasi LUNAS!");
+  window.location.reload();
+}
+
+async function saveWeightAndCost(order, orderId) {
+  const { error } = await supabase
+    .from("pesanan")
+    .update({
+      berat_aktual: order.berat_aktual,
+      total_biaya_final: order.total_biaya_final,
+    })
+    .eq(FIELD_ID_PESANAN, orderId);
+
+  if (error) throw error;
+  alert("Berat aktual & total biaya berhasil diupdate!");
+}
+
+// ============= Main Component =============
+
 export default function OrderDetailPage() {
   const router = useRouter();
-
   const { id: orderId } = useParams();
+
   const [order, setOrder] = useState(null);
   const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [existingReview, setExistingReview] = useState(null);
   const [service, setService] = useState(null);
-
-  // ✅ hanya untuk UI (buka/tutup proses), TIDAK mengubah logic pesanan
   const [showProcess, setShowProcess] = useState(false);
-
   const [ORDER_SUBSTEPS, setORDER_SUBSTEPS] = useState(ORDER_SUBSTEPS_COD);
 
   useEffect(() => {
@@ -44,75 +278,31 @@ export default function OrderDetailPage() {
     const fetchOrder = async () => {
       setLoading(true);
       try {
-        const { data: orderData, error: orderError } = await supabase
-          .from("pesanan")
-          .select("*")
-          .eq("id_pesanan", orderId)
-          .single();
-        if (orderError) throw orderError;
+        const orderData = await fetchOrderData(orderId);
 
-        if (orderData) {
-          if (orderData.metode_pembayaran == "QRIS")
-            setORDER_SUBSTEPS(ORDER_SUBSTEPS_QRIS);
-
-          const { data: serviceData, error: serviceError } = await supabase
-            .from("layanan")
-            .select("*")
-            .eq("id_layanan", orderData.id_layanan)
-            .single();
-          if (serviceError) throw serviceError;
-
-          setService(serviceData);
+        if (orderData.metode_pembayaran === "QRIS") {
+          setORDER_SUBSTEPS(ORDER_SUBSTEPS_QRIS);
         }
 
-        let result;
-        try {
-          const url = `/api/user?uuid=${orderData.id_pelanggan}`;
-          const response = await fetch(url, {
-            method: "GET",
-          });
-          result = await response.json();
-          if (!result.ok) {
-            throw new Error(result.error || "Gagal mengambil data user");
-          }
-        } catch (error) {
-          console.error("Error:", error.message);
-        }
+        const serviceData = await fetchServiceData(orderData.id_layanan);
+        setService(serviceData);
 
-        const { data: pelangganData, error: pelangganError } = await supabase
-          .from("pelanggan")
-          .select("nama")
-          .eq("id_pelanggan", orderData.id_pelanggan)
-          .single();
-        if (pelangganError) throw pelangganError;
-
-        const { data: statusData, error: statusError } = await supabase
-          .from("riwayat_status_pesanan")
-          .select("*")
-          .eq("id_pesanan", orderId)
-          .order("waktu", { ascending: false });
-        if (statusError) throw statusError;
+        const userData = await fetchUserData(orderData.id_pelanggan);
+        const customerData = await fetchCustomerData(orderData.id_pelanggan);
+        const statusData = await fetchStatusHistory(orderId);
+        const ulasanData = await fetchReview(orderId);
 
         setOrder({
           ...orderData,
           pelanggan: {
-            ...customer,
-            ...{
-              email: result.user.email,
-            },
+            ...customerData,
+            email: userData?.email,
           },
           riwayat_status_pesanan: statusData,
           latestStatus: statusData?.[0] || null,
         });
 
-        const { data: ulasan, error: ulasanError } = await supabase
-          .from("ulasan")
-          .select("*")
-          .eq("id_pesanan", orderId)
-          .single();
-
-        if (ulasanError && ulasanError.code !== "PGRST116") throw ulasanError;
-        setExistingReview(ulasan);
+        setExistingReview(ulasanData);
       } catch (err) {
         console.error(err);
         setError("Gagal mengambil data");
@@ -140,7 +330,6 @@ export default function OrderDetailPage() {
     const clickedIndex = ORDER_SUBSTEPS.findIndex(
       (s) => s.label === clickedStep.label,
     );
-
     const currentIndexInDB = Math.max(
       ...existingStatuses.map((s) =>
         ORDER_SUBSTEPS.findIndex((step) => step.label === s),
@@ -148,126 +337,59 @@ export default function OrderDetailPage() {
       -1,
     );
 
-    const isCOD = order.metode_pembayaran === "COD";
-
     try {
       let finalUpdatedStatus = null;
 
       if (clickedIndex > currentIndexInDB) {
-        let stepsToInsert = ORDER_SUBSTEPS.slice(
-          currentIndexInDB + 1,
-          clickedIndex + 1,
-        ).filter((step) => !existingStatuses.includes(step.label));
-
-        // Kalau berat aktual belum ada dan mau pass verifikasi berat maka deny
-        if (order.berat_aktual === null && clickedIndex > 2) {
-          alert("Set berat aktual dulu lah 😡😡💢💢💢");
+        // Moving forward
+        const validation = validateStepProgression(
+          order,
+          clickedIndex,
+          currentIndexInDB,
+          ORDER_SUBSTEPS,
+        );
+        if (!validation.valid) {
+          alert(validation.message);
           return;
         }
 
-        // Kalau belum lunas dan mau pass menunggu pembayaran maka deny
-        if (
-          !isCOD &&
-          clickedIndex > 3 &&
-          order.status_pembayaran !== "Paid" &&
-          order.status_pesanan === "Menunggu Pembayaran"
-        ) {
-          alert("Bro pelanggan nya belum bayar 🤬💢");
-          return;
-        }
-
-        // Prepaid/QRIS: harus lunas sebelum "Sedang Dicuci"
-        if (!isCOD && order.status_pembayaran !== "Paid") {
-          const waitingForPaymentIndex = ORDER_SUBSTEPS.findIndex(
-            (s) => s.label === "Menunggu Pembayaran",
-          );
-
-          if (
-            clickedIndex > waitingForPaymentIndex &&
-            currentIndexInDB < waitingForPaymentIndex
-          ) {
-            alert(
-              "Pembayaran belum lunas. Status tidak dapat dimajukan melewati 'Menunggu Pembayaran'.",
-            );
-            return;
-          }
-        }
-
-        // Kalau mau update ke selesai tapi belum konfirmasi pembayaran maka deny
-        if (clickedIndex == 8 && order.status_pembayaran !== "Paid") {
-          alert("Konfirmasi pembayaran dulu yah");
-          return;
-        }
-
-        // COD: skip "Menunggu Pembayaran"
-        // Deprecated karena udah pake setORDER_SUBSTEPS
-        if (isCOD) {
-          stepsToInsert = stepsToInsert.filter(
-            (step) => step.label !== "Menunggu Pembayaran",
-          );
-        }
-
-        if (stepsToInsert.length > 0) {
-          const inserts = stepsToInsert.map((step) => ({
-            id_pesanan: order.id_pesanan,
-            status: step.label,
-            deskripsi: step.desc,
-            waktu: new Date(),
-          }));
-          const { error: insertError } = await supabase
-            .from("riwayat_status_pesanan")
-            .insert(inserts);
-          if (insertError) throw insertError;
-
-          finalUpdatedStatus = stepsToInsert[stepsToInsert.length - 1].label;
-        }
-      } else if (clickedIndex < currentIndexInDB) {
-        const stepsToDelete = ORDER_SUBSTEPS.slice(clickedIndex + 1).map(
-          (s) => s.label,
+        const stepsToInsert = getStepsToInsert(
+          ORDER_SUBSTEPS,
+          currentIndexInDB,
+          clickedIndex,
+          existingStatuses,
         );
 
+        if (stepsToInsert.length > 0) {
+          finalUpdatedStatus = await insertStatusSteps(
+            stepsToInsert,
+            order[FIELD_ID_PESANAN],
+          );
+        }
+      } else if (clickedIndex < currentIndexInDB) {
+        // Moving backward
+        const stepsToDelete = getStepsToDelete(ORDER_SUBSTEPS, clickedIndex);
+
         if (stepsToDelete.length > 0) {
-          const { error: deleteError } = await supabase
-            .from("riwayat_status_pesanan")
-            .delete()
-            .in("status", stepsToDelete)
-            .eq("id_pesanan", order.id_pesanan);
-          if (deleteError) throw deleteError;
+          await deleteStatusSteps(stepsToDelete, order[FIELD_ID_PESANAN]);
         }
 
         finalUpdatedStatus = clickedStep.label;
-      } else if (clickedIndex === currentIndexInDB) {
+      } else {
+        // Same step
         finalUpdatedStatus = clickedStep.label;
       }
 
-      const updatePayload = {
-        status_pesanan: clickedStep.label,
-      };
-
-      if (isCOD && clickedStep.label === "Selesai") {
-        updatePayload.status_pembayaran = "Paid";
-        updatePayload.tgl_pembayaran_lunas = new Date().toISOString();
-        updatePayload.jumlah_dibayar = order.total_biaya_final;
-        updatePayload.metode_pembayaran = "COD";
-      }
-
-      const { error: pesananError } = await supabase
-        .from("pesanan")
-        .update(updatePayload)
-        .eq("id_pesanan", order.id_pesanan);
-      if (pesananError) throw pesananError;
+      const updatePayload = buildUpdatePayload(clickedStep, order);
+      await updateOrderStatus(updatePayload, order[FIELD_ID_PESANAN]);
 
       if (finalUpdatedStatus) {
         await insertNotification(order, finalUpdatedStatus);
       }
 
-      const { data: updatedStatuses, error: fetchError } = await supabase
-        .from("riwayat_status_pesanan")
-        .select("*")
-        .eq("id_pesanan", order.id_pesanan)
-        .order("waktu", { ascending: true });
-
-      if (fetchError) throw fetchError;
+      const updatedStatuses = await refetchStatusHistory(
+        order[FIELD_ID_PESANAN],
+      );
 
       setOrder({
         ...order,
@@ -284,7 +406,6 @@ export default function OrderDetailPage() {
   };
 
   const handleCancelOrder = async () => {
-    // 1. Konfirmasi agar tidak sengaja terpencet
     const confirmCancel = confirm(
       "Apakah Anda yakin ingin membatalkan pesanan ini? Aksi ini tidak dapat dibatalkan.",
     );
@@ -295,32 +416,23 @@ export default function OrderDetailPage() {
     try {
       setLoading(true);
 
-      // 2. Update tabel pesanan
-      const { error: updateError } = await supabase
+      await supabase
         .from("pesanan")
         .update({
           cancelled_at: cancelTime,
           status_pesanan: "Dibatalkan",
         })
-        .eq("id_pesanan", orderId);
+        .eq(FIELD_ID_PESANAN, orderId);
 
-      if (updateError) throw updateError;
+      await supabase.from("riwayat_status_pesanan").insert([
+        {
+          [FIELD_ID_PESANAN]: orderId,
+          status: "Dibatalkan",
+          deskripsi: "Pesanan telah dibatalkan oleh pihak laundry/pelanggan.",
+          waktu: cancelTime,
+        },
+      ]);
 
-      // 3. Masukkan ke riwayat status agar muncul di timeline
-      const { error: historyError } = await supabase
-        .from("riwayat_status_pesanan")
-        .insert([
-          {
-            id_pesanan: orderId,
-            status: "Dibatalkan",
-            deskripsi: "Pesanan telah dibatalkan oleh pihak laundry/pelanggan.",
-            waktu: cancelTime,
-          },
-        ]);
-
-      if (historyError) throw historyError;
-
-      // 4. Update State lokal agar UI langsung berubah
       setOrder((prev) => ({
         ...prev,
         cancelled_at: cancelTime,
@@ -344,15 +456,19 @@ export default function OrderDetailPage() {
     }
   };
 
-  // ====== EARLY RETURNS ======
+  // Early returns
   if (loading) {
-    return <StaffDashboardLayout></StaffDashboardLayout>;
+    return (
+      <StaffDashboardLayout>
+        <StaffDashboardLoading />
+      </StaffDashboardLayout>
+    );
   }
 
   if (error) {
     return (
       <StaffDashboardLayout>
-        <StaffDashboardLoading></StaffDashboardLoading>
+        <div className="p-6 text-center text-red-600">{error}</div>
       </StaffDashboardLayout>
     );
   }
@@ -367,7 +483,7 @@ export default function OrderDetailPage() {
     );
   }
 
-  // ====== UI derivations ======
+  // UI derivations
   const currentSubIndex =
     order.riwayat_status_pesanan.length === 0
       ? 0
@@ -427,7 +543,9 @@ export default function OrderDetailPage() {
               <div className="flex-1">
                 <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-gray-900">
                   Detail Pesanan{" "}
-                  <span className="text-purple-700">#{order.id_pesanan}</span>
+                  <span className="text-purple-700">
+                    #{order[FIELD_ID_PESANAN]}
+                  </span>
                 </h1>
                 <p className="text-sm text-gray-500 mt-1">
                   Status saat ini:{" "}
@@ -479,7 +597,6 @@ export default function OrderDetailPage() {
                 </button>
               )}
 
-              {/* indikator jika sudah dibatalkan */}
               {order.cancelled_at && (
                 <div className="mt-4 p-4 bg-gray-100 border-l-4 border-red-500 text-red-700 italic">
                   Pesanan ini telah dibatalkan pada:{" "}
@@ -621,40 +738,17 @@ export default function OrderDetailPage() {
 
                         <button
                           className="mt-3 w-full inline-flex justify-center items-center rounded-xl px-4 py-2.5
-                                     bg-green-600 text-white text-sm font-semibold
-                                     hover:bg-green-700 active:scale-[0.99] transition"
-                          onClick={async () => {
-                            if (
-                              !confirm(
-                                `Yakin konfirmasi pembayaran LUNAS sebesar Rp ${Number(
-                                  order.total_biaya_final,
-                                ).toLocaleString("id-ID")},-?`,
-                              )
-                            )
-                              return;
-
-                            try {
-                              const { error } = await supabase
-                                .from("pesanan")
-                                .update({
-                                  status_pembayaran: "Paid",
-                                  tgl_pembayaran_lunas:
-                                    new Date().toISOString(),
-                                  metode_pembayaran:
-                                    order.metode_pembayaran === "COD"
-                                      ? "COD"
-                                      : "QRIS",
-                                  jumlah_dibayar: order.total_biaya_final,
-                                })
-                                .eq("id_pesanan", order.id_pesanan);
-                              if (error) throw error;
-                              alert("Pembayaran berhasil dikonfirmasi LUNAS!");
-                              window.location.reload();
-                            } catch (err) {
+                                   bg-green-600 text-white text-sm font-semibold
+                                   hover:bg-green-700 active:scale-[0.99] transition"
+                          onClick={() =>
+                            confirmPayment(
+                              order,
+                              order[FIELD_ID_PESANAN],
+                            ).catch((err) => {
                               console.error(err);
                               alert("Gagal konfirmasi pembayaran");
-                            }
-                          }}
+                            })
+                          }
                         >
                           Konfirmasi Pembayaran LUNAS
                         </button>
@@ -666,24 +760,14 @@ export default function OrderDetailPage() {
                       className="inline-flex justify-center items-center rounded-xl px-4 py-2.5
                                  bg-purple-600 text-white text-sm font-semibold
                                  hover:bg-purple-700 active:scale-[0.99] transition"
-                      onClick={async () => {
-                        try {
-                          const { error } = await supabase
-                            .from("pesanan")
-                            .update({
-                              berat_aktual: order.berat_aktual,
-                              total_biaya_final: order.total_biaya_final,
-                            })
-                            .eq("id_pesanan", order.id_pesanan);
-                          if (error) throw error;
-                          alert(
-                            "Berat aktual & total biaya berhasil diupdate!",
-                          );
-                        } catch (err) {
-                          console.error(err);
-                          alert("Gagal update berat aktual");
-                        }
-                      }}
+                      onClick={() =>
+                        saveWeightAndCost(order, order[FIELD_ID_PESANAN]).catch(
+                          (err) => {
+                            console.error(err);
+                            alert("Gagal update berat aktual");
+                          },
+                        )
+                      }
                     >
                       Simpan Perubahan
                     </button>
@@ -691,7 +775,7 @@ export default function OrderDetailPage() {
                 </div>
               </SectionCard>
 
-              {/*Progress collapsible */}
+              {/* Progress collapsible */}
               <SectionCard
                 title="Progress Pesanan"
                 rightSlot={
@@ -706,7 +790,6 @@ export default function OrderDetailPage() {
                   </button>
                 }
               >
-                {/* Ringkasan status sekarang */}
                 <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
                   <div className="flex items-center gap-2">
                     <Badge variant="gray">
@@ -726,13 +809,11 @@ export default function OrderDetailPage() {
                   </div>
                 </div>
 
-                {/* List step ditampilkan hanya saat dibuka */}
                 {showProcess && (
                   <div className="mt-4 space-y-3">
                     {ORDER_SUBSTEPS.map((step, idx) => {
                       const completed = idx <= currentSubIndex;
                       const isCurrent = idx === currentSubIndex;
-
                       const stepHistory = order.riwayat_status_pesanan?.find(
                         (s) => s.status === step.label,
                       );
