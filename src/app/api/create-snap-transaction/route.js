@@ -39,9 +39,9 @@ export async function POST(req) {
       },
       callbacks: {
         // TODO: Really?  handle di window snap pay juga bisa sih
-        finish: `${origin}/orders/success`,
-        error: `${origin}/orders/failed`,
-        pending: `${origin}/orders/pending`,
+        finish: `${origin}/orders`,
+        error: `${origin}/orders`,
+        pending: `${origin}/orders`,
       },
     };
 

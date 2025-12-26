@@ -9,6 +9,7 @@ import { useUser } from "@/contexts/UserContext";
 import { ArrowLeft, Clock, Loader2, CheckCircle, XCircle } from "lucide-react";
 import ReviewForm from "@/components/ReviewForm";
 import ReviewCard from "@/components/ReviewCard";
+import { insertNotification } from '@/utils/notifications';
 
 // =========================================================
 // KONSTANTA STATUS BARU
@@ -233,7 +234,8 @@ export default function OrderDetailsPage() {
   const shouldShowSnapButton =
     isPrepaid && // Hanya untuk prepaid
     currentSubStatus === "Menunggu Pembayaran" && // Hanya saat status ini
-    order?.status_pembayaran !== "Paid";
+    order?.status_pembayaran !== "Paid" &&
+    order?.berat_aktual !== null;
 
   const isPendingPayment =
     timeline.map((t) => t.status).includes("Menunggu Pembayaran") &&

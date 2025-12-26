@@ -6,8 +6,9 @@ import { supabase } from "@/lib/supabase";
 import { ArrowLeft } from "lucide-react";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 import ReviewCard from "@/components/ReviewCard";
+import { insertNotification } from '@/utils/notifications';
 
-const ORDER_SUBSTEPS = [
+const ORDER_SUBSTEPS_QRIS = [
   { step: 1, label: "Pesanan Dibuat", icon: "🧾", desc: "Order berhasil dibuat dan masuk sistem." },
   { step: 2, label: "Penjemputan", icon: "🚗", desc: "Kurir sedang menjemput pakaian ke alamat pelanggan." },
   { step: 3, label: "Verifikasi Berat", icon: "⚖️", desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi." },
@@ -17,6 +18,17 @@ const ORDER_SUBSTEPS = [
   { step: 7, label: "Selesai Dicuci", icon: "📦", desc: "Pakaian selesai dicuci, siap dikirim." },
   { step: 8, label: "Sedang Diantar", icon: "🛵", desc: "Kurir mengantar pakaian ke pelanggan." },
   { step: 9, label: "Selesai", icon: "✅", desc: "Pesanan diterima pelanggan, transaksi selesai." },
+];
+
+const ORDER_SUBSTEPS_COD = [
+  { step: 1, label: "Pesanan Dibuat", icon: "🧾", desc: "Order berhasil dibuat dan masuk sistem." },
+  { step: 2, label: "Penjemputan", icon: "🚗", desc: "Kurir sedang menjemput pakaian ke alamat pelanggan." },
+  { step: 3, label: "Verifikasi Berat", icon: "⚖️", desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi." },
+  { step: 4, label: "Sedang Dicuci", icon: "💧", desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas)." },
+  { step: 5, label: "Sedang Disetrika", icon: "🔥", desc: "Proses setrika / finishing." },
+  { step: 6, label: "Selesai Dicuci", icon: "📦", desc: "Pakaian selesai dicuci, siap dikirim." },
+  { step: 7, label: "Sedang Diantar", icon: "🛵", desc: "Kurir mengantar pakaian ke pelanggan." },
+  { step: 8, label: "Selesai", icon: "✅", desc: "Pesanan diterima pelanggan, transaksi selesai." },
 ];
 
 // Mapping sub-status ke super status
@@ -57,73 +69,6 @@ const getStepColor = (subStatus) => {
       return "bg-red-50 border-red-200";
     default:
       return "bg-gray-50 border-gray-200";
-  }
-};
-
-// Fungsi Helper untuk Notifikasi
-const insertNotification = async (order, statusLabel) => {
-  if (!order || !order.id_pelanggan || !order.id_pesanan) {
-    console.warn(
-      "Skip notifikasi: Order, ID pelanggan, atau ID pesanan tidak tersedia.",
-    );
-    return;
-  }
-
-  const orderId = `#${order.id_pesanan}`;
-  let notificationData = null;
-  let finalTotal = order.total_biaya_final || 0;
-
-  switch (statusLabel) {
-    case "Penjemputan":
-      notificationData = {
-        tipe: "PICKUP",
-        konten: `Pesanan ${orderId}: Kurir kami sedang dalam perjalanan menuju lokasi Anda untuk penjemputan.`,
-      };
-      break;
-    case "Menunggu Pembayaran":
-      notificationData = {
-        tipe: "PAYMENT_DUE",
-        konten: `Tagihan Baru untuk Pesanan ${orderId}! Pesanan sudah diverifikasi, mohon segera lakukan pembayaran sebesar Rp${finalTotal.toLocaleString(
-          "id-ID",
-        )},-`,
-      };
-      break;
-    case "Selesai Dicuci":
-      notificationData = {
-        tipe: "READY_FOR_DELIVERY",
-        konten: `Pesanan ${orderId}: Pakaian Anda sudah selesai! Siap diantar kembali ke lokasi Anda.`,
-      };
-      break;
-    case "Sedang Diantar":
-      notificationData = {
-        tipe: "DELIVERY",
-        konten: `Pesanan ${orderId}: Kurir sedang mengantar pesanan Anda. Mohon bersiap menerima.`,
-      };
-      break;
-    case "Selesai":
-      notificationData = {
-        tipe: "ORDER_COMPLETE",
-        konten: `Pesanan ${orderId}: Selesai! Terima kasih telah menggunakan jasa kami.`,
-      };
-      break;
-    case "Dibatalkan":
-      notificationData = {
-        tipe: "CANCELLED",
-        konten: `Pesanan ${orderId}: Dibatalkan oleh Admin. Mohon hubungi layanan pelanggan untuk info lebih lanjut.`,
-      };
-      break;
-    default:
-      return;
-  }
-
-  if (notificationData) {
-    const { error: notifErr } = await supabase.from("notifikasi").insert({
-      id_user: order.id_pelanggan,
-      id_pesanan: order.id_pesanan,
-      tipe: notificationData.tipe,
-      konten: notificationData.konten,
-    });
-    if (notifErr) console.error("⚠️ Gagal insert notifikasi:", notifErr);
   }
 };
 
@@ -214,6 +159,8 @@ export default function OrderDetailPage() {
   // ✅ hanya untuk UI (buka/tutup proses), TIDAK mengubah logic pesanan
   const [showProcess, setShowProcess] = useState(false);
 
+  const [ORDER_SUBSTEPS, setORDER_SUBSTEPS] = useState(ORDER_SUBSTEPS_COD);
+
   useEffect(() => {
     if (!orderId) return;
 
@@ -228,6 +175,8 @@ export default function OrderDetailPage() {
         if (orderError) throw orderError;
 
         if (orderData) {
+          if(orderData.metode_pembayaran == "QRIS") setORDER_SUBSTEPS(ORDER_SUBSTEPS_QRIS);
+
           const { data: serviceData, error: serviceError } = await supabase
             .from("layanan")
             .select("*")
@@ -308,6 +257,18 @@ export default function OrderDetailPage() {
           clickedIndex + 1,
         ).filter((step) => !existingStatuses.includes(step.label));
 
+        // Kalau berat aktual belum ada dan mau pass verifikasi berat maka deny
+        if(order.berat_aktual === null && clickedIndex > 2) {
+          alert("Set berat aktual dulu lah 😡😡💢💢💢");
+          return;
+        }
+
+        // Kalau belum lunas dan mau pass menunggu pembayaran maka deny
+        if(!isCOD && clickedIndex > 3 && order.status_pembayaran !== "Paid" && order.status_pesanan === "Menunggu Pembayaran") {
+          alert("Bro pelanggan nya belum bayar 🤬💢")
+          return;
+        }
+
         // Prepaid/QRIS: harus lunas sebelum "Sedang Dicuci"
         if (!isCOD && order.status_pembayaran !== "Paid") {
           const waitingForPaymentIndex = ORDER_SUBSTEPS.findIndex(
@@ -325,7 +286,14 @@ export default function OrderDetailPage() {
           }
         }
 
+        // Kalau mau update ke selesai tapi belum konfirmasi pembayaran maka deny
+        if(clickedIndex == 8 && order.status_pembayaran !== "Paid") {
+          alert("Konfirmasi pembayaran dulu yah");
+          return;
+        }
+
         // COD: skip "Menunggu Pembayaran"
+        // Deprecated karena udah pake setORDER_SUBSTEPS
         if (isCOD) {
           stepsToInsert = stepsToInsert.filter(
             (step) => step.label !== "Menunggu Pembayaran",
