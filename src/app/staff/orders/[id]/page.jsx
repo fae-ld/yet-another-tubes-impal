@@ -7,144 +7,9 @@ import { ArrowLeft } from "lucide-react";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 import ReviewCard from "@/components/ReviewCard";
 import { insertNotification } from '@/utils/notifications';
-
-const ORDER_SUBSTEPS_QRIS = [
-  { step: 1, label: "Pesanan Dibuat", icon: "🧾", desc: "Order berhasil dibuat dan masuk sistem." },
-  { step: 2, label: "Penjemputan", icon: "🚗", desc: "Kurir sedang menjemput pakaian ke alamat pelanggan." },
-  { step: 3, label: "Verifikasi Berat", icon: "⚖️", desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi." },
-  { step: 4, label: "Menunggu Pembayaran", icon: "💳", desc: "Berat/harga akhir sudah dikonfirmasi, menunggu pembayaran dari pelanggan." },
-  { step: 5, label: "Sedang Dicuci", icon: "💧", desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas)." },
-  { step: 6, label: "Sedang Disetrika", icon: "🔥", desc: "Proses setrika / finishing." },
-  { step: 7, label: "Selesai Dicuci", icon: "📦", desc: "Pakaian selesai dicuci, siap dikirim." },
-  { step: 8, label: "Sedang Diantar", icon: "🛵", desc: "Kurir mengantar pakaian ke pelanggan." },
-  { step: 9, label: "Selesai", icon: "✅", desc: "Pesanan diterima pelanggan, transaksi selesai." },
-];
-
-const ORDER_SUBSTEPS_COD = [
-  { step: 1, label: "Pesanan Dibuat", icon: "🧾", desc: "Order berhasil dibuat dan masuk sistem." },
-  { step: 2, label: "Penjemputan", icon: "🚗", desc: "Kurir sedang menjemput pakaian ke alamat pelanggan." },
-  { step: 3, label: "Verifikasi Berat", icon: "⚖️", desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi." },
-  { step: 4, label: "Sedang Dicuci", icon: "💧", desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas)." },
-  { step: 5, label: "Sedang Disetrika", icon: "🔥", desc: "Proses setrika / finishing." },
-  { step: 6, label: "Selesai Dicuci", icon: "📦", desc: "Pakaian selesai dicuci, siap dikirim." },
-  { step: 7, label: "Sedang Diantar", icon: "🛵", desc: "Kurir mengantar pakaian ke pelanggan." },
-  { step: 8, label: "Selesai", icon: "✅", desc: "Pesanan diterima pelanggan, transaksi selesai." },
-];
-
-// Mapping sub-status ke super status
-const getSuperStatus = (subStatus) => {
-  if (subStatus === "Selesai") return "Done";
-  if (subStatus === "Dibatalkan") return "Cancelled";
-
-  if (
-    [
-      "Penjemputan",
-      "Verifikasi Berat",
-      "Sedang Dicuci",
-      "Sedang Disetrika",
-      "Selesai Dicuci",
-      "Sedang Diantar",
-    ].includes(subStatus)
-  ) {
-    return "In Progress";
-  }
-
-  if (["Pesanan Dibuat", "Menunggu Pembayaran"].includes(subStatus)) {
-    return "Pending";
-  }
-
-  return "Unknown Status";
-};
-
-const getStepColor = (subStatus) => {
-  const superStatus = getSuperStatus(subStatus);
-  switch (superStatus) {
-    case "Pending":
-      return "bg-yellow-50 border-yellow-200";
-    case "In Progress":
-      return "bg-purple-50 border-purple-200";
-    case "Done":
-      return "bg-green-50 border-green-200";
-    case "Cancelled":
-      return "bg-red-50 border-red-200";
-    default:
-      return "bg-gray-50 border-gray-200";
-  }
-};
-
-/* =========================
-   UI helpers (no hooks)
-========================= */
-
-function Badge({ variant, children }) {
-  const styles = {
-    green: "bg-green-50 text-green-700 ring-1 ring-inset ring-green-200",
-    yellow: "bg-yellow-50 text-yellow-700 ring-1 ring-inset ring-yellow-200",
-    red: "bg-red-50 text-red-700 ring-1 ring-inset ring-red-200",
-    gray: "bg-gray-50 text-gray-700 ring-1 ring-inset ring-gray-200",
-    purple: "bg-purple-50 text-purple-700 ring-1 ring-inset ring-purple-200",
-    blue: "bg-blue-50 text-blue-700 ring-1 ring-inset ring-blue-200",
-  };
-
-  return (
-    <span
-      className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-        styles[variant] || styles.gray
-      }`}
-    >
-      {children}
-    </span>
-  );
-}
-
-function SectionCard({ title, subtitle, rightSlot, children }) {
-  return (
-    <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
-      <div className="px-6 py-5 border-b border-gray-100 flex items-start justify-between gap-4">
-        <div>
-          <h2 className="text-base font-bold text-gray-900">{title}</h2>
-          {subtitle ? <p className="text-xs text-gray-500 mt-1">{subtitle}</p> : null}
-        </div>
-        {rightSlot ? <div className="shrink-0">{rightSlot}</div> : null}
-      </div>
-      <div className="px-6 py-5">{children}</div>
-    </div>
-  );
-}
-
-function InfoRow({ label, value, emphasize = false }) {
-  return (
-    <div className="flex items-start justify-between gap-6">
-      <span className="text-sm text-gray-500">{label}</span>
-      <span
-        className={`text-sm text-gray-900 text-right break-words ${
-          emphasize ? "font-semibold" : "font-medium"
-        }`}
-      >
-        {value ?? "-"}
-      </span>
-    </div>
-  );
-}
-
-function StatPill({ label, value }) {
-  return (
-    <div className="rounded-2xl bg-gray-50 ring-1 ring-gray-200 px-4 py-3">
-      <p className="text-[11px] text-gray-500 font-semibold tracking-wide uppercase">
-        {label}
-      </p>
-      <p className="mt-1 text-sm font-bold text-gray-900">{value}</p>
-    </div>
-  );
-}
-
-function renderStatusBadge(superStatus) {
-  if (superStatus === "Done") return <Badge variant="green">Done</Badge>;
-  if (superStatus === "Pending") return <Badge variant="yellow">Pending</Badge>;
-  if (superStatus === "In Progress") return <Badge variant="purple">In Progress</Badge>;
-  if (superStatus === "Cancelled") return <Badge variant="red">Cancelled</Badge>;
-  return <Badge variant="gray">Unknown</Badge>;
-}
+import StaffDashboardLoading from "@/components/staff/loadings/StaffDashboardLoading";
+import { ORDER_SUBSTEPS_COD, ORDER_SUBSTEPS_QRIS, getStepColor, getSuperStatus } from "@/utils/staff/orderdetails";
+import { Badge, SectionCard, InfoRow, StatPill, renderStatusBadge } from "@/components/staff/orders/OrderDetails";
 
 export default function OrderDetailPage() {
   const router = useRouter();
@@ -380,22 +245,7 @@ export default function OrderDetailPage() {
   if (loading) {
     return (
       <StaffDashboardLayout>
-        <div className="px-4 md:px-8 py-10">
-          <div className="max-w-6xl mx-auto">
-            <div className="bg-white rounded-2xl ring-1 ring-gray-200 p-6">
-              <div className="animate-pulse space-y-4">
-                <div className="h-6 w-56 bg-gray-200 rounded" />
-                <div className="h-4 w-80 bg-gray-200 rounded" />
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-                  <div className="h-24 bg-gray-200 rounded-2xl" />
-                  <div className="h-24 bg-gray-200 rounded-2xl" />
-                  <div className="h-24 bg-gray-200 rounded-2xl" />
-                </div>
-                <div className="h-64 bg-gray-200 rounded-2xl mt-6" />
-              </div>
-            </div>
-          </div>
-        </div>
+        
       </StaffDashboardLayout>
     );
   }
@@ -403,16 +253,7 @@ export default function OrderDetailPage() {
   if (error) {
     return (
       <StaffDashboardLayout>
-        <div className="px-4 md:px-8 py-10">
-          <div className="max-w-6xl mx-auto">
-            <div className="bg-white rounded-2xl ring-1 ring-red-200 p-6">
-              <p className="text-red-700 font-semibold">{error}</p>
-              <p className="text-sm text-red-600 mt-1">
-                Coba refresh halaman atau periksa koneksi database.
-              </p>
-            </div>
-          </div>
-        </div>
+        <StaffDashboardLoading></StaffDashboardLoading>
       </StaffDashboardLayout>
     );
   }
