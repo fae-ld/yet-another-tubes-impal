@@ -494,6 +494,53 @@ export default function OrderDetailsPage() {
             </div>
           </div>
 
+          {/* Logic: Muncul HANYA jika pesanan SUDAH dibatalkan */}
+          {order?.cancelled_at !== null && (
+            <div className="bg-red-50 border border-red-200 p-6 rounded-2xl text-center mt-6 shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex justify-center mb-3">
+                <div className="bg-red-100 p-3 rounded-full">
+                  <span className="text-2xl">🚫</span>
+                </div>
+              </div>
+
+              <h3 className="text-red-900 font-bold text-lg">
+                Pesanan Dibatalkan
+              </h3>
+              <p className="text-red-700 text-sm mb-4 leading-relaxed">
+                Mohon maaf, pesanan ini telah dihentikan. Jika Anda merasa ini
+                adalah kesalahan atau ingin bertanya lebih lanjut, silakan
+                hubungi tim kami.
+              </p>
+
+              <div className="bg-white py-4 px-4 rounded-xl border border-red-100 mb-5 flex flex-col items-center gap-1">
+                <span className="text-gray-400 text-[10px] uppercase font-bold tracking-widest">
+                  Customer Support
+                </span>
+                <span className="text-sm font-medium text-gray-700 italic">
+                  support@laundrygo.dummy
+                </span>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <Button
+                  onClick={() =>
+                    (window.location.href =
+                      "mailto:support@laundrygo.dummy?subject=Tanya Pesanan Batal #" +
+                      order.id_pesanan)
+                  }
+                  className="bg-gray-800 text-white hover:bg-black rounded-xl py-5 text-sm font-semibold w-full transition-all"
+                >
+                  Hubungi via Email
+                </Button>
+
+                <p className="text-[11px] text-gray-400">
+                  ID Pesanan:{" "}
+                  <span className="font-mono">{order.id_pesanan}</span>
+                </p>
+              </div>
+            </div>
+          )}
+
           {/* ============================================================= */}
           {/* PAYMENT SECTION: IF STATUS MENUNGGU PEMBAYARAN, TAMPILKAN SNAP */}
           {/* ============================================================= */}
@@ -524,7 +571,7 @@ export default function OrderDetailsPage() {
           )}
 
           {/* Payment Section (Jika sudah Paid, baik Prepaid maupun COD) */}
-          {order?.status_pembayaran === "Paid" && (
+          {!order?.cancelled_at && order?.status_pembayaran === "Paid" && (
             <div className="bg-green-50 border border-green-200 p-4 rounded-lg text-green-700 text-center mt-6">
                   ✅ Pembayaran **LUNAS** sebesar Rp{" "}
               {order.total_biaya_final?.toLocaleString("id-ID") || 0},-    {" "}
