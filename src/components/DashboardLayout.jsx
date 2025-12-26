@@ -86,12 +86,12 @@ export default function DashboardLayout({ children }) {
       {/* Floating profile */}
       <div className="fixed top-4 right-4 flex items-center gap-3 bg-white rounded-xl shadow-md px-4 py-2 z-50">
         <img
-          src="https://avatar.iran.liara.run/public/girl"
+          src="/images/user.jpg"
           alt="Profile"
           className="w-10 h-10 rounded-full object-cover"
         />
         <span className="font-medium text-gray-800">
-          {user?.user_metadata?.full_name || "User"}
+          {user?.nama_pelanggan || "User"}
         </span>
       </div>
 

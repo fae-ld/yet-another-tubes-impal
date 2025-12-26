@@ -45,6 +45,16 @@ export default function LoginForm() {
       if (password !== confirmPassword) return alert("Passwords do not match.");
       if (!fullName.trim()) return alert("Full name cannot be empty.");
 
+      const { data: staffCheckData, errorStaffCheck } = await supabase
+        .from("staf")
+        .select("*")
+        .eq("email", email);
+
+      if (staffCheckData) {
+        alert("Nice try bro, kamu atmint");
+        return;
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,

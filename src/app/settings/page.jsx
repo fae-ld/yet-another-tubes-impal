@@ -55,6 +55,7 @@ export default function SettingsPage() {
       alert("Gagal menyimpan perubahan");
     } else {
       alert("Berhasil disimpan!");
+      window.location.reload();
     }
   }
 
@@ -92,7 +93,7 @@ export default function SettingsPage() {
             {/* Profile Picture */}
             <div className="flex flex-col items-center gap-3">
               <img
-                src="https://avatar.iran.liara.run/public/girl"
+                src={`/images/user.jpg`}
                 className="w-24 h-24 rounded-full border shadow"
               />
               <p className="text-xs text-gray-500">Foto profil (read-only)</p>

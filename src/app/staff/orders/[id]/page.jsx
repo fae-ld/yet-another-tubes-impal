@@ -6,192 +6,37 @@ import { supabase } from "@/lib/supabase";
 import { ArrowLeft } from "lucide-react";
 import StaffDashboardLayout from "@/components/staff/StaffDashboardLayout";
 import ReviewCard from "@/components/ReviewCard";
-
-const ORDER_SUBSTEPS = [
-  // ... (Array ini sudah benar dan tidak diubah) ...
-  {
-    step: 1,
-    label: "Pesanan Dibuat",
-    icon: "🧾",
-    desc: "Order berhasil dibuat dan masuk sistem.",
-  },
-  {
-    step: 2,
-    label: "Penjemputan",
-    icon: "🚗",
-    desc: "Kurir sedang menjemput pakaian ke alamat pelanggan.",
-  },
-  {
-    step: 3,
-    label: "Verifikasi Berat",
-    icon: "⚖️",
-    desc: "Pakaian sudah diterima di laundry dan sedang ditimbang/diverifikasi.",
-  },
-  {
-    step: 4,
-    label: "Menunggu Pembayaran",
-    icon: "💳",
-    desc: "Berat/harga akhir sudah dikonfirmasi, menunggu pembayaran dari pelanggan.",
-  },
-  {
-    step: 5,
-    label: "Sedang Dicuci",
-    icon: "💧",
-    desc: "Pakaian sedang dicuci (dimulai setelah pembayaran lunas).",
-  },
-  {
-    step: 6,
-    label: "Sedang Disetrika",
-    icon: "🔥",
-    desc: "Proses setrika / finishing.",
-  },
-  {
-    step: 7,
-    label: "Selesai Dicuci",
-    icon: "📦",
-    desc: "Pakaian selesai dicuci, siap dikirim.",
-  },
-  {
-    step: 8,
-    label: "Sedang Diantar",
-    icon: "🛵",
-    desc: "Kurir mengantar pakaian ke pelanggan.",
-  },
-  {
-    step: 9,
-    label: "Selesai",
-    icon: "✅",
-    desc: "Pesanan diterima pelanggan, transaksi selesai.",
-  },
-];
-
-// Mapping sub-status ke super status
-const getSuperStatus = (subStatus) => {
-  // Status Akhir
-  if (subStatus === "Selesai") return "Done";
-
-  // Status Pembatalan
-  if (subStatus === "Dibatalkan") return "Cancelled"; // Menggunakan 'Cancelled' untuk konsistensi
-
-  // Status Operasional (Sedang Dikerjakan)
-  if (
-    [
-      "Penjemputan",
-      "Verifikasi Berat",
-      "Sedang Dicuci",
-      "Sedang Disetrika",
-      "Selesai Dicuci",
-      "Sedang Diantar",
-    ].includes(subStatus)
-  ) {
-    return "In Progress";
-  }
-
-  // Status Menunggu (Awal/Pembayaran)
-  if (["Pesanan Dibuat", "Menunggu Pembayaran"].includes(subStatus)) {
-    return "Pending"; // Diperbaiki: Mengembalikan "Pending" agar cocok dengan switch case
-  }
-
-  // Kasus fallback jika status tidak dikenal
-  return "Unknown Status";
-};
-
-const getStepColor = (subStatus) => {
-  const superStatus = getSuperStatus(subStatus);
-  switch (superStatus) {
-    case "Pending":
-      return "bg-yellow-100 border-yellow-300 text-yellow-700";
-    case "In Progress":
-      return "bg-purple-100 border-purple-300 text-purple-700";
-    case "Done":
-      return "bg-green-100 border-green-300 text-green-700";
-    case "Cancelled": //  penanganan untuk status dibatalkan
-      return "bg-red-100 border-red-300 text-red-700";
-    default:
-      return "bg-gray-100 border-gray-200 text-gray-700";
-  }
-};
-
-// Fungsi Helper untuk Notifikasi
-const insertNotification = async (order, statusLabel) => {
-  // Pastikan order dan ID Pelanggan tersedia
-  if (!order || !order.id_pelanggan || !order.id_pesanan) {
-    console.warn(
-      "Skip notifikasi: Order, ID pelanggan, atau ID pesanan tidak tersedia.",
-    );
-    return;
-  }
-
-  // Format ID Pesanan agar mudah dibaca
-  const orderId = `#${order.id_pesanan}`;
-
-  // Definisikan Konten Notifikasi
-  let notificationData = null;
-  let finalTotal = order.total_biaya_final || 0;
-
-  switch (statusLabel) {
-    case "Penjemputan":
-      notificationData = {
-        tipe: "PICKUP",
-        konten: `Pesanan ${orderId}: Kurir kami sedang dalam perjalanan menuju lokasi Anda untuk penjemputan.`,
-      };
-      break;
-    case "Menunggu Pembayaran":
-      notificationData = {
-        tipe: "PAYMENT_DUE",
-        konten: `Tagihan Baru untuk Pesanan ${orderId}! Pesanan sudah diverifikasi, mohon segera lakukan pembayaran sebesar Rp${finalTotal.toLocaleString("id-ID")},-`,
-      };
-      break;
-    case "Selesai Dicuci":
-      notificationData = {
-        tipe: "READY_FOR_DELIVERY",
-        konten: `Pesanan ${orderId}: Pakaian Anda sudah selesai! Siap diantar kembali ke lokasi Anda.`,
-      };
-      break;
-    case "Sedang Diantar":
-      notificationData = {
-        tipe: "DELIVERY",
-        konten: `Pesanan ${orderId}: Kurir sedang mengantar pesanan Anda. Mohon bersiap menerima.`,
-      };
-      break;
-    case "Selesai":
-      notificationData = {
-        tipe: "ORDER_COMPLETE",
-        konten: `Pesanan ${orderId}: Selesai! Terima kasih telah menggunakan jasa kami.`,
-      };
-      break;
-    case "Dibatalkan":
-      notificationData = {
-        tipe: "CANCELLED",
-        konten: `Pesanan ${orderId}: Dibatalkan oleh Admin. Mohon hubungi layanan pelanggan untuk info lebih lanjut.`,
-      };
-      break;
-    default:
-      return;
-  }
-
-  if (notificationData) {
-    const { error: notifErr } = await supabase.from("notifikasi").insert({
-      id_user: order.id_pelanggan,
-      id_pesanan: order.id_pesanan,
-      tipe: notificationData.tipe,
-      konten: notificationData.konten,
-    });
-    if (notifErr) {
-      console.error("⚠️ Gagal insert notifikasi:", notifErr);
-    }
-  }
-};
+import { insertNotification } from "@/utils/notifications";
+import StaffDashboardLoading from "@/components/staff/loadings/StaffDashboardLoading";
+import {
+  ORDER_SUBSTEPS_COD,
+  ORDER_SUBSTEPS_QRIS,
+  getStepColor,
+  getSuperStatus,
+} from "@/utils/staff/orderdetails";
+import {
+  Badge,
+  SectionCard,
+  InfoRow,
+  StatPill,
+  renderStatusBadge,
+} from "@/components/staff/orders/OrderDetails";
 
 export default function OrderDetailPage() {
   const router = useRouter();
 
   const { id: orderId } = useParams();
   const [order, setOrder] = useState(null);
+  const [customer, setCustomer] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [existingReview, setExistingReview] = useState(null);
   const [service, setService] = useState(null);
+
+  // ✅ hanya untuk UI (buka/tutup proses), TIDAK mengubah logic pesanan
+  const [showProcess, setShowProcess] = useState(false);
+
+  const [ORDER_SUBSTEPS, setORDER_SUBSTEPS] = useState(ORDER_SUBSTEPS_COD);
 
   useEffect(() => {
     if (!orderId) return;
@@ -207,6 +52,9 @@ export default function OrderDetailPage() {
         if (orderError) throw orderError;
 
         if (orderData) {
+          if (orderData.metode_pembayaran == "QRIS")
+            setORDER_SUBSTEPS(ORDER_SUBSTEPS_QRIS);
+
           const { data: serviceData, error: serviceError } = await supabase
             .from("layanan")
             .select("*")
@@ -215,6 +63,20 @@ export default function OrderDetailPage() {
           if (serviceError) throw serviceError;
 
           setService(serviceData);
+        }
+
+        let result;
+        try {
+          const url = `/api/user?uuid=${orderData.id_pelanggan}`;
+          const response = await fetch(url, {
+            method: "GET",
+          });
+          result = await response.json();
+          if (!result.ok) {
+            throw new Error(result.error || "Gagal mengambil data user");
+          }
+        } catch (error) {
+          console.error("Error:", error.message);
         }
 
         const { data: pelangganData, error: pelangganError } = await supabase
@@ -233,7 +95,12 @@ export default function OrderDetailPage() {
 
         setOrder({
           ...orderData,
-          pelanggan: pelangganData,
+          pelanggan: {
+            ...customer,
+            ...{
+              email: result.user.email,
+            },
+          },
           riwayat_status_pesanan: statusData,
           latestStatus: statusData?.[0] || null,
         });
@@ -242,13 +109,9 @@ export default function OrderDetailPage() {
           .from("ulasan")
           .select("*")
           .eq("id_pesanan", orderId)
-          .single(); // Karena diasumsikan 1 pesanan hanya 1 ulasan
+          .single();
 
-        if (ulasanError && ulasanError.code !== "PGRST116") {
-          // Abaikan error 'data tidak ditemukan' (PGRST116)
-          throw ulasanError;
-        }
-        // Set state ulasan (akan null jika tidak ditemukan)
+        if (ulasanError && ulasanError.code !== "PGRST116") throw ulasanError;
         setExistingReview(ulasan);
       } catch (err) {
         console.error(err);
@@ -267,39 +130,54 @@ export default function OrderDetailPage() {
       return;
     }
 
-    // 1. Persiapan Data & Indeks
+    if (order.cancelled_at) {
+      alert("Pesanan ini sudah dibatalkan dan tidak dapat diubah lagi.");
+      return;
+    }
+
     const existingStatuses =
       order.riwayat_status_pesanan?.map((s) => s.status) || [];
     const clickedIndex = ORDER_SUBSTEPS.findIndex(
       (s) => s.label === clickedStep.label,
     );
 
-    // Cari index terakhir yang ada di DB (mengambil langkah terjauh yang sudah dicapai)
     const currentIndexInDB = Math.max(
       ...existingStatuses.map((s) =>
         ORDER_SUBSTEPS.findIndex((step) => step.label === s),
       ),
-      -1, // Jika belum ada status sama sekali, mulai dari -1
+      -1,
     );
 
     const isCOD = order.metode_pembayaran === "COD";
 
     try {
       let finalUpdatedStatus = null;
-      let isStatusChanged = false;
 
       if (clickedIndex > currentIndexInDB) {
-        // ===========================================
-        // LOGIKA FORWARD (MAJU)
-        // ===========================================
         let stepsToInsert = ORDER_SUBSTEPS.slice(
           currentIndexInDB + 1,
           clickedIndex + 1,
         ).filter((step) => !existingStatuses.includes(step.label));
 
-        // 1. Untuk Prepaid/QRIS (default): Pastikan pembayaran sudah lunas sebelum ke "Sedang Dicuci"
+        // Kalau berat aktual belum ada dan mau pass verifikasi berat maka deny
+        if (order.berat_aktual === null && clickedIndex > 2) {
+          alert("Set berat aktual dulu lah 😡😡💢💢💢");
+          return;
+        }
+
+        // Kalau belum lunas dan mau pass menunggu pembayaran maka deny
+        if (
+          !isCOD &&
+          clickedIndex > 3 &&
+          order.status_pembayaran !== "Paid" &&
+          order.status_pesanan === "Menunggu Pembayaran"
+        ) {
+          alert("Bro pelanggan nya belum bayar 🤬💢");
+          return;
+        }
+
+        // Prepaid/QRIS: harus lunas sebelum "Sedang Dicuci"
         if (!isCOD && order.status_pembayaran !== "Paid") {
-          // Jika belum lunas, batasi status maksimal hingga Menunggu Pembayaran (Step 4)
           const waitingForPaymentIndex = ORDER_SUBSTEPS.findIndex(
             (s) => s.label === "Menunggu Pembayaran",
           );
@@ -311,11 +189,18 @@ export default function OrderDetailPage() {
             alert(
               "Pembayaran belum lunas. Status tidak dapat dimajukan melewati 'Menunggu Pembayaran'.",
             );
-            return; // Hentikan proses update
+            return;
           }
         }
 
-        // 2. Untuk COD: Hilangkan status "Menunggu Pembayaran" (Step 4) dari list stepsToInsert
+        // Kalau mau update ke selesai tapi belum konfirmasi pembayaran maka deny
+        if (clickedIndex == 8 && order.status_pembayaran !== "Paid") {
+          alert("Konfirmasi pembayaran dulu yah");
+          return;
+        }
+
+        // COD: skip "Menunggu Pembayaran"
+        // Deprecated karena udah pake setORDER_SUBSTEPS
         if (isCOD) {
           stepsToInsert = stepsToInsert.filter(
             (step) => step.label !== "Menunggu Pembayaran",
@@ -334,14 +219,9 @@ export default function OrderDetailPage() {
             .insert(inserts);
           if (insertError) throw insertError;
 
-          // Status yang baru saja dicapai
           finalUpdatedStatus = stepsToInsert[stepsToInsert.length - 1].label;
-          isStatusChanged = true;
         }
       } else if (clickedIndex < currentIndexInDB) {
-        // ===========================================
-        // LOGIKA BACKWARD (MUNDUR)
-        // ===========================================
         const stepsToDelete = ORDER_SUBSTEPS.slice(clickedIndex + 1).map(
           (s) => s.label,
         );
@@ -353,41 +233,34 @@ export default function OrderDetailPage() {
             .in("status", stepsToDelete)
             .eq("id_pesanan", order.id_pesanan);
           if (deleteError) throw deleteError;
-          isStatusChanged = true;
         }
-        // Status tujuan saat mundur
+
         finalUpdatedStatus = clickedStep.label;
       } else if (clickedIndex === currentIndexInDB) {
-        // Jika klik status yang sudah aktif, tidak perlu update, tapi set status untuk notifikasi
         finalUpdatedStatus = clickedStep.label;
       }
 
-      // 2. Update status_pesanan di tabel pesanan (Super Status)
-      // Note: Update ini akan dijalankan bahkan jika tidak ada insert/delete (misal, hanya mengklik status yang sudah dicapai)
       const updatePayload = {
         status_pesanan: clickedStep.label,
       };
 
       if (isCOD && clickedStep.label === "Selesai") {
-        // Tambahkan update status pembayaran ke Paid jika ini COD dan statusnya "Selesai"
         updatePayload.status_pembayaran = "Paid";
         updatePayload.tgl_pembayaran_lunas = new Date().toISOString();
         updatePayload.jumlah_dibayar = order.total_biaya_final;
         updatePayload.metode_pembayaran = "COD";
       }
+
       const { error: pesananError } = await supabase
         .from("pesanan")
-        .update(updatePayload) // Gunakan payload dinamis
+        .update(updatePayload)
         .eq("id_pesanan", order.id_pesanan);
       if (pesananError) throw pesananError;
 
-      // 3. 🔔 INSERT NOTIFIKASI
-      // Panggil fungsi helper untuk insert notifikasi jika ada perubahan status yang signifikan
       if (finalUpdatedStatus) {
         await insertNotification(order, finalUpdatedStatus);
       }
 
-      // 4. Update State Lokal (Fetch Ulang Data Riwayat)
       const { data: updatedStatuses, error: fetchError } = await supabase
         .from("riwayat_status_pesanan")
         .select("*")
@@ -398,7 +271,7 @@ export default function OrderDetailPage() {
 
       setOrder({
         ...order,
-        status_pesanan: clickedStep.label, // Set state lokal ke sub-status yang baru
+        status_pesanan: clickedStep.label,
         riwayat_status_pesanan: updatedStatuses || [],
         latestStatus: updatedStatuses?.[updatedStatuses.length - 1] || null,
       });
@@ -410,325 +283,522 @@ export default function OrderDetailPage() {
     }
   };
 
-  if (loading) return <div className="p-6 text-center">Loading...</div>;
+  const handleCancelOrder = async () => {
+    // 1. Konfirmasi agar tidak sengaja terpencet
+    const confirmCancel = confirm(
+      "Apakah Anda yakin ingin membatalkan pesanan ini? Aksi ini tidak dapat dibatalkan.",
+    );
+    if (!confirmCancel) return;
+
+    const cancelTime = new Date().toISOString();
+
+    try {
+      setLoading(true);
+
+      // 2. Update tabel pesanan
+      const { error: updateError } = await supabase
+        .from("pesanan")
+        .update({
+          cancelled_at: cancelTime,
+          status_pesanan: "Dibatalkan",
+        })
+        .eq("id_pesanan", orderId);
+
+      if (updateError) throw updateError;
+
+      // 3. Masukkan ke riwayat status agar muncul di timeline
+      const { error: historyError } = await supabase
+        .from("riwayat_status_pesanan")
+        .insert([
+          {
+            id_pesanan: orderId,
+            status: "Dibatalkan",
+            deskripsi: "Pesanan telah dibatalkan oleh pihak laundry/pelanggan.",
+            waktu: cancelTime,
+          },
+        ]);
+
+      if (historyError) throw historyError;
+
+      // 4. Update State lokal agar UI langsung berubah
+      setOrder((prev) => ({
+        ...prev,
+        cancelled_at: cancelTime,
+        status_pesanan: "Dibatalkan",
+        riwayat_status_pesanan: [
+          {
+            status: "Dibatalkan",
+            waktu: cancelTime,
+            deskripsi: "Pesanan telah dibatalkan.",
+          },
+          ...prev.riwayat_status_pesanan,
+        ],
+      }));
+
+      alert("Pesanan berhasil dibatalkan.");
+    } catch (err) {
+      console.error("Gagal membatalkan pesanan:", err);
+      alert("Terjadi kesalahan saat membatalkan pesanan.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ====== EARLY RETURNS ======
+  if (loading) {
+    return <StaffDashboardLayout></StaffDashboardLayout>;
+  }
+
   if (error) {
     return (
       <StaffDashboardLayout>
-        <div className="p-6 text-center text-red-600">{error}</div>;
+        <StaffDashboardLoading></StaffDashboardLoading>
       </StaffDashboardLayout>
     );
   }
-  if (!order)
+
+  if (!order) {
     return (
-      <div className="p-6 text-center text-gray-600">Order tidak ditemukan</div>
+      <StaffDashboardLayout>
+        <div className="p-6 text-center text-gray-600">
+          Order tidak ditemukan
+        </div>
+      </StaffDashboardLayout>
     );
+  }
 
-  // const currentSubIndex = ORDER_SUBSTEPS.findIndex(
-  //   (s) => s.label === (order.latestStatus?.status || "Pesanan Baru"),
-  // );
-
+  // ====== UI derivations ======
   const currentSubIndex =
-    order.riwayat_status_pesanan.length == 0
+    order.riwayat_status_pesanan.length === 0
       ? 0
       : order.riwayat_status_pesanan.length - 1;
 
-  // Helper: warna badge berdasarkan super status
+  const currentStatusLabel = order.latestStatus?.status ?? order.status_pesanan;
+  const superStatus = getSuperStatus(currentStatusLabel);
+
+  const paidBadge =
+    order.status_pembayaran === "Paid" ? (
+      <Badge variant="green">Paid</Badge>
+    ) : (
+      <Badge variant="red">Unpaid</Badge>
+    );
+
+  const hargaPerKgText =
+    service?.harga_per_kg != null
+      ? `Rp ${Number(service.harga_per_kg).toLocaleString("id-ID")} / kg`
+      : "-";
+
+  const totalText =
+    order.total_biaya_final != null
+      ? `Rp ${Number(order.total_biaya_final).toLocaleString("id-ID")}`
+      : "-";
+
+  const jadwalText = order.jadwal_selesai
+    ? new Date(order.jadwal_selesai).toLocaleString()
+    : "-";
+
+  const progressPercent = Math.min(
+    100,
+    Math.max(0, ((currentSubIndex + 1) / ORDER_SUBSTEPS.length) * 100),
+  );
 
   return (
     <StaffDashboardLayout>
-      <button
-        onClick={() => router.push("/staff/orders")}
-        className="flex items-center gap-2 bg-purple-50 text-purple-700 px-4 py-2 rounded-lg shadow-sm 
-                              hover:bg-purple-100 hover:scale-[1.03] hover:shadow-md 
-                              transition-all duration-200 active:scale-95 cursor-pointer mb-4"
-      >
-        <ArrowLeft size={20} />
-        <span className="font-medium">Kembali</span>
-      </button>
-      <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
-        <h1 className="text-3xl font-bold text-purple-700">
-          Detail Pesanan #{order.id_pesanan}
-        </h1>
+      <div className="px-4 md:px-8 py-6">
+        <div className="max-w-6xl mx-auto space-y-6">
+          {/* Header */}
+          <div className="bg-white rounded-2xl shadow-sm ring-1 ring-gray-200 overflow-hidden">
+            <div className="px-5 md:px-6 py-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div className="flex items-center justify-between md:justify-start gap-3">
+                <button
+                  onClick={() => router.push("/staff/orders")}
+                  className="inline-flex items-center gap-2 rounded-xl px-3 py-2 bg-white ring-1 ring-gray-200
+                             hover:bg-gray-50 active:scale-[0.98] transition"
+                >
+                  <ArrowLeft size={18} />
+                  <span className="text-sm font-semibold">Kembali</span>
+                </button>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          {/* Informasi Pelanggan */}
-          <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-            <h2 className="text-lg font-semibold mb-4">Informasi Pelanggan</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Nama</span>
-                <span className="text-gray-800 font-semibold">
-                  {order.pelanggan?.nama ?? "-"}
-                </span>
+                <div className="md:hidden">
+                  {renderStatusBadge(superStatus)}
+                </div>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">ID Pelanggan</span>
-                <span className="text-gray-800 font-semibold">
-                  {order.id_pelanggan}
-                </span>
+
+              <div className="flex-1">
+                <h1 className="text-xl md:text-2xl font-extrabold tracking-tight text-gray-900">
+                  Detail Pesanan{" "}
+                  <span className="text-purple-700">#{order.id_pesanan}</span>
+                </h1>
+                <p className="text-sm text-gray-500 mt-1">
+                  Status saat ini:{" "}
+                  <span className="font-semibold text-gray-800">
+                    {order.cancelled_at ? "Dibatalkan" : currentStatusLabel}
+                  </span>
+                </p>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Email</span>
-                <span className="text-gray-800 font-semibold">
-                  {order.pelanggan?.email ?? "-"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Telepon</span>
-                <span className="text-gray-800 font-semibold">
-                  {order.pelanggan?.telepon ?? "-"}
-                </span>
+
+              <div className="hidden md:flex items-center gap-2">
+                {renderStatusBadge(superStatus)}
+                {paidBadge}
               </div>
             </div>
-          </div>
 
-          {/* Informasi Pesanan */}
-          <div className="bg-white p-6 rounded-xl shadow border border-gray-200">
-            <h2 className="text-lg font-semibold mb-4">Informasi Pesanan</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Jenis Layanan</span>
-                <span className="text-gray-800 font-semibold">
-                  {order.jenis_layanan ?? "-"}
+            {/* Progress bar */}
+            <div className="px-5 md:px-6 pb-5">
+              <div className="flex items-center justify-between text-xs text-gray-500 mb-2">
+                <span>Progress</span>
+                <span className="font-semibold text-gray-700">
+                  {Math.round(progressPercent)}%
                 </span>
               </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Harga</span>
-                <span className="text-gray-800 font-semibold">
-                  {`Rp. ${service?.harga_per_kg} / kg` ?? "-"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">
-                  Estimasi Berat
-                </span>
-                <span className="text-gray-800 font-semibold">
-                  {order.estimasi_berat ?? "-"} kg
-                </span>
-              </div>
-
-              {/* Input Berat Aktual */}
-              <div className="flex justify-between items-center">
-                <span className="text-gray-600 font-medium">Berat Aktual</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="0.1"
-                  placeholder={order.estimasi_berat ?? ""}
-                  value={order.berat_aktual ?? ""}
-                  onChange={(e) => {
-                    const berat = parseFloat(e.target.value);
-
-                    if (berat <= 0) {
-                      return;
-                    }
-
-                    const hargaPerKg = service?.harga_per_kg;
-                    setOrder({
-                      ...order,
-                      berat_aktual: berat,
-                      total_biaya_final: berat
-                        ? berat * hargaPerKg
-                        : order.total_biaya_final,
-                    });
-                  }}
-                  className="border border-gray-300 rounded px-2 py-1 w-24 text-right"
+              <div className="h-2.5 rounded-full bg-gray-100 ring-1 ring-gray-200 overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-purple-600 transition-all"
+                  style={{ width: `${progressPercent}%` }}
                 />
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">Total Biaya</span>
-                <span className="text-gray-800 font-semibold">
-                  {order.total_biaya_final != null
-                    ? Number(order.total_biaya_final).toLocaleString("id-ID")
-                    : "-"}{" "}
-                  Rp
-                </span>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mt-4">
+                <StatPill
+                  label="Status Pesanan"
+                  value={currentStatusLabel || "-"}
+                />
+                <StatPill
+                  label="Pembayaran"
+                  value={order.status_pembayaran ?? "-"}
+                />
+                <StatPill label="Total" value={totalText} />
               </div>
 
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">
-                  Status Pembayaran
-                </span>
-                <span className="text-gray-800 font-semibold">
-                  {order.status_pembayaran ?? "-"}
-                </span>
-              </div>
-
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">
-                  Metode Pembayaran
-                </span>
-                <span className="text-gray-800 font-semibold">
-                  {order.metode_pembayaran ?? "-"}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">
-                  Status Pembayaran
-                </span>
-                <span
-                  className={`font-semibold ${order.status_pembayaran === "Paid" ? "text-green-600" : "text-red-600"}`}
+              {!order.cancelled_at && order.status_pesanan !== "Selesai" && (
+                <button
+                  onClick={handleCancelOrder}
+                  className="mt-4 px-4 py-2 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-lg shadow-md transition duration-200 flex items-center justify-center gap-2"
                 >
-                  {order.status_pembayaran ?? "Unpaid"}
-                </span>
-              </div>
+                  <span>❌</span> Batalkan Pesanan
+                </button>
+              )}
 
-              {/* ⚠️ TOMBOL KONFIRMASI PEMBAYARAN MANUAL (COD) */}
-              {order.status_pembayaran !== "Paid" &&
-                order.total_biaya_final > 0 && (
-                  <div className="mt-4 pt-3 border-t border-dashed border-gray-300">
-                    <p className="text-sm font-medium text-red-500 mb-2">
-                      PERINGATAN: Pesanan Belum Lunas!
+              {/* indikator jika sudah dibatalkan */}
+              {order.cancelled_at && (
+                <div className="mt-4 p-4 bg-gray-100 border-l-4 border-red-500 text-red-700 italic">
+                  Pesanan ini telah dibatalkan pada:{" "}
+                  {new Date(order.cancelled_at).toLocaleString("id-ID")}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Grid */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+            <div className="lg:col-span-5 space-y-6">
+              <SectionCard
+                title="Informasi Pelanggan"
+                subtitle="Data identitas pelanggan terkait pesanan."
+              >
+                <div className="space-y-3">
+                  <InfoRow
+                    label="Nama"
+                    value={order.pelanggan?.nama ?? "-"}
+                    emphasize
+                  />
+                  <InfoRow label="ID Pelanggan" value={order.id_pelanggan} />
+                  <InfoRow
+                    label="Email"
+                    value={order.pelanggan?.email ?? "-"}
+                  />
+                  <InfoRow
+                    label="Telepon"
+                    value={order.pelanggan?.telepon ?? "-"}
+                  />
+                </div>
+              </SectionCard>
+
+              <SectionCard title="Ulasan">
+                {existingReview ? (
+                  <ReviewCard
+                    review={{
+                      ...existingReview,
+                      pelanggan_nama: order.pelanggan?.nama,
+                    }}
+                    variant="default"
+                  />
+                ) : (
+                  <div className="rounded-2xl bg-gray-50 ring-1 ring-gray-200 p-5 text-center">
+                    <p className="font-semibold text-gray-800">
+                      Belum ada ulasan
                     </p>
-                    <button
-                      className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 transition w-full"
-                      onClick={async () => {
-                        if (
-                          !confirm(
-                            `Yakin konfirmasi pembayaran LUNAS sebesar Rp ${Number(
-                              order.total_biaya_final,
-                            ).toLocaleString("id-ID")},-?`,
-                          )
-                        )
-                          return;
+                    <p className="text-sm text-gray-500 mt-1">╰(*°▽°*)╯</p>
+                  </div>
+                )}
+              </SectionCard>
+            </div>
 
+            <div className="lg:col-span-7 space-y-6">
+              <SectionCard
+                title="Informasi Pesanan"
+                subtitle="Detail layanan, berat, biaya, pembayaran, dan jadwal."
+                rightSlot={
+                  <div className="flex items-center gap-2">
+                    {paidBadge}
+                    <Badge variant="blue">
+                      {order.metode_pembayaran ?? "-"}
+                    </Badge>
+                  </div>
+                }
+              >
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-4">
+                  <InfoRow
+                    label="Jenis Layanan"
+                    value={order.jenis_layanan ?? "-"}
+                  />
+                  <InfoRow label="Harga" value={hargaPerKgText} />
+                  <InfoRow
+                    label="Estimasi Berat"
+                    value={
+                      order.estimasi_berat != null
+                        ? `${order.estimasi_berat} kg`
+                        : "-"
+                    }
+                  />
+
+                  <div className="flex items-start justify-between gap-6">
+                    <span className="text-sm text-gray-500">Berat Aktual</span>
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.1"
+                        placeholder={order.estimasi_berat ?? ""}
+                        value={order.berat_aktual ?? ""}
+                        onChange={(e) => {
+                          const berat = parseFloat(e.target.value);
+                          if (berat <= 0) return;
+
+                          const hargaPerKg = service?.harga_per_kg;
+                          setOrder({
+                            ...order,
+                            berat_aktual: berat,
+                            total_biaya_final: berat
+                              ? berat * hargaPerKg
+                              : order.total_biaya_final,
+                          });
+                        }}
+                        className="w-28 rounded-xl px-3 py-2 text-right text-sm font-semibold
+                                   bg-white ring-1 ring-gray-200 shadow-sm
+                                   focus:outline-none focus:ring-2 focus:ring-purple-200"
+                        disabled={order.cancelled_at !== null}
+                      />
+                      <span className="text-sm text-gray-500">kg</span>
+                    </div>
+                  </div>
+
+                  <InfoRow label="Total Biaya" value={totalText} emphasize />
+                  <InfoRow
+                    label="Status Pesanan"
+                    value={currentStatusLabel || "-"}
+                  />
+                  <InfoRow label="Jadwal Selesai" value={jadwalText} />
+                  <div className="hidden md:block" />
+                </div>
+
+                <div className="mt-5 space-y-3">
+                  {order.status_pembayaran !== "Paid" &&
+                    order.total_biaya_final > 0 && (
+                      <div className="rounded-2xl bg-red-50 ring-1 ring-inset ring-red-200 p-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div>
+                            <p className="text-sm font-semibold text-red-700">
+                              Pesanan belum lunas
+                            </p>
+                            <p className="text-xs text-red-600 mt-1">
+                              Konfirmasi manual hanya jika pembayaran sudah
+                              diterima.
+                            </p>
+                          </div>
+                          <Badge variant="red">Action Required</Badge>
+                        </div>
+
+                        <button
+                          className="mt-3 w-full inline-flex justify-center items-center rounded-xl px-4 py-2.5
+                                     bg-green-600 text-white text-sm font-semibold
+                                     hover:bg-green-700 active:scale-[0.99] transition"
+                          onClick={async () => {
+                            if (
+                              !confirm(
+                                `Yakin konfirmasi pembayaran LUNAS sebesar Rp ${Number(
+                                  order.total_biaya_final,
+                                ).toLocaleString("id-ID")},-?`,
+                              )
+                            )
+                              return;
+
+                            try {
+                              const { error } = await supabase
+                                .from("pesanan")
+                                .update({
+                                  status_pembayaran: "Paid",
+                                  tgl_pembayaran_lunas:
+                                    new Date().toISOString(),
+                                  metode_pembayaran:
+                                    order.metode_pembayaran === "COD"
+                                      ? "COD"
+                                      : "QRIS",
+                                  jumlah_dibayar: order.total_biaya_final,
+                                })
+                                .eq("id_pesanan", order.id_pesanan);
+                              if (error) throw error;
+                              alert("Pembayaran berhasil dikonfirmasi LUNAS!");
+                              window.location.reload();
+                            } catch (err) {
+                              console.error(err);
+                              alert("Gagal konfirmasi pembayaran");
+                            }
+                          }}
+                        >
+                          Konfirmasi Pembayaran LUNAS
+                        </button>
+                      </div>
+                    )}
+
+                  <div className="flex flex-col sm:flex-row gap-3 sm:justify-end">
+                    <button
+                      className="inline-flex justify-center items-center rounded-xl px-4 py-2.5
+                                 bg-purple-600 text-white text-sm font-semibold
+                                 hover:bg-purple-700 active:scale-[0.99] transition"
+                      onClick={async () => {
                         try {
                           const { error } = await supabase
                             .from("pesanan")
                             .update({
-                              status_pembayaran: "Paid",
-                              tgl_pembayaran_lunas: new Date().toISOString(),
-                              metode_pembayaran:
-                                order.metode_pembayaran === "COD"
-                                  ? "COD"
-                                  : "QRIS",
-                              jumlah_dibayar: order.total_biaya_final,
+                              berat_aktual: order.berat_aktual,
+                              total_biaya_final: order.total_biaya_final,
                             })
                             .eq("id_pesanan", order.id_pesanan);
                           if (error) throw error;
-                          alert("Pembayaran berhasil dikonfirmasi LUNAS!");
-                          // Fetch ulang data pesanan untuk update tampilan
-                          window.location.reload();
+                          alert(
+                            "Berat aktual & total biaya berhasil diupdate!",
+                          );
                         } catch (err) {
                           console.error(err);
-                          alert("Gagal konfirmasi pembayaran");
+                          alert("Gagal update berat aktual");
                         }
                       }}
                     >
-                      Konfirmasi Pembayaran LUNAS
+                      Simpan Perubahan
                     </button>
                   </div>
-                )}
+                </div>
+              </SectionCard>
 
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">
-                  Status Pesanan
-                </span>
-                <span className="text-gray-800 font-semibold">
-                  {order.latestStatus?.status ?? order.status_pesanan}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-600 font-medium">
-                  Jadwal Selesai
-                </span>
-                <span className="text-gray-800 font-semibold">
-                  {order.jadwal_selesai
-                    ? new Date(order.jadwal_selesai).toLocaleString()
-                    : "-"}
-                </span>
-              </div>
-            </div>
-
-            {/* Button Save Berat Aktual */}
-            <div className="mt-4 flex justify-end">
-              <button
-                className="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 transition"
-                onClick={async () => {
-                  try {
-                    const { error } = await supabase
-                      .from("pesanan")
-                      .update({
-                        berat_aktual: order.berat_aktual,
-                        total_biaya_final: order.total_biaya_final,
-                      })
-                      .eq("id_pesanan", order.id_pesanan);
-                    if (error) throw error;
-                    alert("Berat aktual & total biaya berhasil diupdate!");
-                  } catch (err) {
-                    console.error(err);
-                    alert("Gagal update berat aktual");
-                  }
-                }}
+              {/*Progress collapsible */}
+              <SectionCard
+                title="Progress Pesanan"
+                rightSlot={
+                  <button
+                    type="button"
+                    onClick={() => setShowProcess((v) => !v)}
+                    className="inline-flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold
+                               bg-purple-50 text-purple-700 ring-1 ring-purple-100
+                               hover:bg-purple-100 active:scale-[0.98] transition"
+                  >
+                    {showProcess ? "Tutup Proses ▲" : "Ubah Status ▼"}
+                  </button>
+                }
               >
-                Simpan
-              </button>
+                {/* Ringkasan status sekarang */}
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="gray">
+                      Step{" "}
+                      {Math.min(ORDER_SUBSTEPS.length, currentSubIndex + 1)} /{" "}
+                      {ORDER_SUBSTEPS.length}
+                    </Badge>
+                    <Badge variant="blue">{currentStatusLabel || "-"}</Badge>
+                  </div>
+
+                  <div className="text-sm text-gray-500">
+                    Klik{" "}
+                    <span className="font-semibold text-purple-700">
+                      Ubah Status
+                    </span>{" "}
+                    untuk melihat semua step.
+                  </div>
+                </div>
+
+                {/* List step ditampilkan hanya saat dibuka */}
+                {showProcess && (
+                  <div className="mt-4 space-y-3">
+                    {ORDER_SUBSTEPS.map((step, idx) => {
+                      const completed = idx <= currentSubIndex;
+                      const isCurrent = idx === currentSubIndex;
+
+                      const stepHistory = order.riwayat_status_pesanan?.find(
+                        (s) => s.status === step.label,
+                      );
+
+                      return (
+                        <button
+                          key={step.step}
+                          type="button"
+                          onClick={() => handleStepClick(step)}
+                          className={[
+                            "w-full text-left rounded-2xl border p-4 transition",
+                            "hover:shadow-md active:scale-[0.995]",
+                            getStepColor(step.label),
+                            isCurrent ? "ring-2 ring-purple-300" : "ring-0",
+                          ].join(" ")}
+                        >
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex items-start gap-3">
+                              <div className="text-2xl leading-none">
+                                {step.icon}
+                              </div>
+                              <div>
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <p className="font-extrabold text-gray-900">
+                                    {step.label}
+                                  </p>
+                                  {isCurrent ? (
+                                    <Badge variant="purple">Current</Badge>
+                                  ) : completed ? (
+                                    <Badge variant="green">Completed</Badge>
+                                  ) : (
+                                    <Badge variant="gray">Upcoming</Badge>
+                                  )}
+                                </div>
+
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {step.desc}
+                                </p>
+
+                                {completed && stepHistory?.waktu && (
+                                  <p className="text-xs text-gray-500 mt-2">
+                                    {new Date(
+                                      stepHistory.waktu,
+                                    ).toLocaleString()}
+                                  </p>
+                                )}
+                              </div>
+                            </div>
+
+                            <div className="pt-1">
+                              <input
+                                type="checkbox"
+                                checked={completed}
+                                readOnly
+                                className="h-5 w-5 accent-green-600"
+                              />
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+              </SectionCard>
             </div>
           </div>
-        </div>
-
-        {existingReview && (
-          <div className="mt-3">
-            <ReviewCard
-              review={{
-                ...existingReview,
-                pelanggan_nama: order.pelanggan?.nama, // Tampilkan nama pengguna
-              }}
-              variant="default"
-            />
-          </div>
-        )}
-
-        {!existingReview && (
-          <div className="mt-3 text-center text-gray-500 bold bg-white p-5 rounded-l border shadow-2xl">
-            Belum ada ulasan ╰(*°▽°*)╯
-          </div>
-        )}
-
-        {/* Checklist Status Pesanan */}
-        <div className="bg-white p-6 rounded-2xl shadow-2xl border border-gray-100 space-y-4">
-          <h2 className="text-2xl font-bold text-purple-700 mb-4">
-            Progress Pesanan
-          </h2>
-
-          <ul className="space-y-3">
-            {ORDER_SUBSTEPS.map((step, idx) => {
-              const completed = idx <= currentSubIndex;
-
-              // cari data riwayat untuk step ini
-              const stepHistory = order.riwayat_status_pesanan?.find(
-                (s) => s.status === step.label,
-              );
-
-              return (
-                <li
-                  key={step.step}
-                  className={`flex flex-col md:flex-row items-start md:items-center justify-between p-3 rounded-xl border ${getStepColor(step.label)} hover:cursor-pointer hover:shadow-md transition-shadow`}
-                  onClick={() => handleStepClick(step)}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-xl">{step.icon}</span>
-                    <div>
-                      <p className={`font-medium`}>{step.label}</p>
-                      <p className="text-sm text-gray-500">{step.desc}</p>
-                      {completed && stepHistory?.waktu && (
-                        <p className="text-xs text-gray-400 mt-1">
-                          {new Date(stepHistory.waktu).toLocaleString()}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={completed}
-                    readOnly
-                    className="w-5 h-5 accent-green-600 mt-2 md:mt-0"
-                  />
-                </li>
-              );
-            })}
-          </ul>
         </div>
       </div>
     </StaffDashboardLayout>

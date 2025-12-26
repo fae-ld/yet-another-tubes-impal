@@ -90,7 +90,7 @@ export default function OrdersPage() {
 
           return {
             id: item.id_pesanan,
-            service: item.jenis_layanan,
+            service: item.layanan?.jenis_layanan,
             date: new Date(item.tgl_pesanan).toLocaleDateString("id-ID", {
               day: "numeric",
               month: "short",
@@ -98,7 +98,7 @@ export default function OrdersPage() {
             }),
             // 2. Gunakan Super Status untuk display status
             status: superStatus,
-            paymentStatus: item.status_pembayaran || "Belum Dibayar", // Ganti "Pending" ke "Belum Dibayar" agar lebih jelas
+            paymentStatus: item.status_pembayaran || "Pending",
           };
         });
         setOrders(formatted);
@@ -140,6 +140,8 @@ export default function OrdersPage() {
     }
   };
 
+  console.log(orders.map((item) => item.service));
+
   return (
     <DashboardLayout>
       {/* ... (Sisa JSX tetap sama) ... */}
@@ -171,16 +173,43 @@ export default function OrdersPage() {
             >
               <div className="flex items-center gap-4">
                 {getStatusIcon(item.status)}
-                <div className="flex flex-col">
-                  <span className="text-blue-700 font-semibold">
-                    {item.service}
+                <div className="flex flex-col gap-0.5">
+                  {/* Menampilkan ID Pesanan dengan gaya font mono agar terlihat seperti kode */}
+                  <span className="text-[10px] font-mono text-gray-400 uppercase tracking-wider">
+                    ID: #{item.id_pesanan || item.id}
                   </span>
+
+                  <div className="flex items-center gap-2">
+                    <span className="text-blue-700 font-bold">
+                      {item.service}
+                    </span>
+                    {/* Menampilkan Jenis Layanan (misal: Kilat/Reguler) dengan pemisah dot */}
+                    {item.service && (
+                      <>
+                        <span className="text-gray-300">•</span>
+                        <span className="text-xs font-medium text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md">
+                          {item.service}
+                        </span>
+                      </>
+                    )}
+                  </div>
+
                   <span className="text-gray-500 text-sm">{item.date}</span>
                   <span className="text-xs text-gray-400">
-                    Pembayaran: {item.paymentStatus}
+                    Pembayaran:{" "}
+                    <span
+                      className={
+                        item.paymentStatus === "Paid"
+                          ? "text-green-600 font-medium"
+                          : "text-orange-500 font-medium"
+                      }
+                    >
+                      {item.paymentStatus}
+                    </span>
                   </span>
                 </div>
               </div>
+
               <span
                 className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusStyles(
                   item.status,
