@@ -71,9 +71,14 @@ export default function OrderDetailPage() {
           const response = await fetch(url, {
             method: "GET",
           });
+
           result = await response.json();
-          if (!result.ok) {
-            throw new Error(result.error || "Gagal mengambil data user");
+
+          if (response.status !== 200) {
+            throw new Error(
+              result.error ||
+                `Gagal mengambil data user (Status: ${response.status})`,
+            );
           }
         } catch (error) {
           console.error("Error:", error.message);

@@ -35,7 +35,8 @@ const insertPelanggan = async (user) => {
   }
 
   // 3. Jika BELUM ADA, insert baru
-  const fullName = user.user_metadata?.full_name || user.email;
+  const fullName =
+    user.user_metadata?.display_name || user.user_metadata?.full_name;
   const { error: insertError } = await supabase.from("pelanggan").insert([
     {
       id_pelanggan: user.id,

@@ -47,8 +47,14 @@ export default function LoginForm() {
 
       const { data: staffCheckData, errorStaffCheck } = await supabase
         .from("staf")
-        .select("*")
-        .eq("email", email);
+        .select("email")
+        .eq("email", email)
+        .maybeSingle();
+
+      if (errorStaffCheck) {
+        console.error("Ada masalah saat cek staf:", errorStaffCheck.message);
+        return;
+      }
 
       if (staffCheckData) {
         alert("Nice try bro, kamu atmint");

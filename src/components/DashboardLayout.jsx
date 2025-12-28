@@ -91,7 +91,7 @@ export default function DashboardLayout({ children }) {
           className="w-10 h-10 rounded-full object-cover"
         />
         <span className="font-medium text-gray-800">
-          {user?.nama_pelanggan || "User"}
+          {user?.nama_pelanggan}
         </span>
       </div>
 
