@@ -617,7 +617,7 @@ export default function OrderDetailsPage() {
                 <ReviewCard
                   review={{
                     ...existingReview,
-                    pelanggan_nama: user.user_metadata?.full_name || "Anda", // Tampilkan nama pengguna
+                    pelanggan_nama: user.nama_pelanggan, // Tampilkan nama pengguna
                   }}
                   variant="default"
                 />
